@@ -121,4 +121,54 @@ class NexaInsightsApplicationTests {
         Assertions.assertEquals("doughnut", widget.getType());
         Assertions.assertEquals("Distribución de Estados", widget.getTitle());
     }
+
+    @Test
+    void testPhase11AnalyticalCalculationsAndChartGenerationFromChat() throws Exception {
+        Project project = projectRepository.save(new Project("Proyecto Analítico F11", "Testing real analytics"));
+
+        String csvData = "Ciudad,Ventas,Estado\n" +
+                "Bogota,1500,Cerrado\n" +
+                "Medellin,2200,Cerrado\n" +
+                "Cali,800,Pendiente\n" +
+                "Bogota,1200,Cerrado\n" +
+                "Medellin,1800,Pendiente\n";
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "ventas_ciudades.csv", "text/csv", csvData.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        Dataset dataset = fileImportService.importFile(file, project.getId(), "Ventas Ciudades", null, 0);
+        Assertions.assertNotNull(dataset);
+        Assertions.assertEquals(5, dataset.getTotalRows());
+
+        // 1. Probar cálculo de suma en vista previa de gráfico
+        com.nexainsights.dto.CustomChartRequestDto previewDto = new com.nexainsights.dto.CustomChartRequestDto();
+        previewDto.setDatasetId(dataset.getId());
+        previewDto.setTitle("Suma de Ventas por Ciudad");
+        previewDto.setDimensionKey(dataset.getColumns().get(0).getKey()); // Ciudad
+        previewDto.setMetricKey(dataset.getColumns().get(1).getKey());    // Ventas
+        previewDto.setAggregation("SUM");
+        previewDto.setType("bar");
+
+        com.nexainsights.model.DashboardConfig.ChartWidget previewWidget = dashboardGenerationService.previewCustomChart(previewDto, dataset);
+        Assertions.assertNotNull(previewWidget);
+        Assertions.assertEquals("bar", previewWidget.getType());
+        Assertions.assertTrue(previewWidget.getCategories().contains("Medellin"));
+        Assertions.assertTrue(previewWidget.getCategories().contains("Bogota"));
+        // Medellin: 2200 + 1800 = 4000
+        int medellinIdx = previewWidget.getCategories().indexOf("Medellin");
+        Assertions.assertEquals(4000.0, previewWidget.getSeriesData().get(medellinIdx).doubleValue());
+
+        // 2. Probar que GroqAiAssistantService genera el gráfico automáticamente ante solicitud conversacional
+        ChatRequestDto chatReq = new ChatRequestDto();
+        chatReq.setProjectId(project.getId());
+        chatReq.setDatasetId(dataset.getId());
+        chatReq.setMessage("Grafica las ventas por ciudad");
+
+        ChatResponseDto chatRes = groqAiAssistantService.processUserQuery(chatReq);
+        Assertions.assertNotNull(chatRes);
+        Assertions.assertEquals("CHART_CREATED", chatRes.getActionType());
+        Assertions.assertNotNull(chatRes.getChartWidget());
+        com.nexainsights.model.DashboardConfig.ChartWidget chatWidget = (com.nexainsights.model.DashboardConfig.ChartWidget) chatRes.getChartWidget();
+        Assertions.assertTrue(chatWidget.getTitle().contains("Ventas"));
+    }
 }

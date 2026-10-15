@@ -241,14 +241,31 @@ public class GroqAiAssistantService {
                 || lq.contains("diagrama") || lq.contains("visualiza") || lq.contains("plot");
 
         if (isChartRequest) {
-            // Encontrar la mejor columna de dimensión
+            // Si la consulta menciona 'por [columna]', esa es la dimensión (ej: 'ventas por ciudad' -> dim: Ciudad, metric: Ventas)
             ColumnDefinition targetDim = null;
-            for (ColumnDefinition c : dataset.getColumns()) {
-                if (lq.contains(c.getOriginalName().toLowerCase()) || lq.contains(c.getKey().toLowerCase())) {
-                    targetDim = c;
-                    break;
+            ColumnDefinition targetMetric = null;
+
+            int porIdx = lq.indexOf(" por ");
+            if (porIdx != -1) {
+                String afterPor = lq.substring(porIdx + 5).trim();
+                for (ColumnDefinition c : dataset.getColumns()) {
+                    if (afterPor.contains(c.getOriginalName().toLowerCase()) || afterPor.contains(c.getKey().toLowerCase())) {
+                        targetDim = c;
+                        break;
+                    }
                 }
             }
+
+            // Si no se detectó por 'por', buscar en el texto priorizando columnas no numéricas (dimensiones)
+            if (targetDim == null) {
+                for (ColumnDefinition c : dataset.getColumns()) {
+                    if (!c.isNumeric() && (lq.contains(c.getOriginalName().toLowerCase()) || lq.contains(c.getKey().toLowerCase()))) {
+                        targetDim = c;
+                        break;
+                    }
+                }
+            }
+
             if (targetDim == null) {
                 // Fallback a primera columna categórica o de texto
                 for (ColumnDefinition c : dataset.getColumns()) {
@@ -260,6 +277,14 @@ public class GroqAiAssistantService {
             }
             if (targetDim == null && !dataset.getColumns().isEmpty()) {
                 targetDim = dataset.getColumns().get(0);
+            }
+
+            // Buscar columna numérica mencionada en la consulta (ej. 'ventas')
+            for (ColumnDefinition c : dataset.getColumns()) {
+                if (c.isNumeric() && (lq.contains(c.getOriginalName().toLowerCase()) || lq.contains(c.getKey().toLowerCase()))) {
+                    targetMetric = c;
+                    break;
+                }
             }
 
             if (targetDim != null) {
@@ -282,28 +307,28 @@ public class GroqAiAssistantService {
                 else if (lq.contains("promedio") || lq.contains("media")) aggregation = "AVG";
                 else if (lq.contains("máximo") || lq.contains("maximo") || lq.contains("mayor")) aggregation = "MAX";
                 else if (lq.contains("mínimo") || lq.contains("minimo") || lq.contains("menor")) aggregation = "MIN";
+                else if (targetMetric != null) aggregation = "SUM"; // Si nombra una métrica como 'ventas por ciudad', por defecto SUM
 
-                // Si no es COUNT, buscar columna numérica
-                if (!"COUNT".equals(aggregation)) {
+                // Asignar clave métrica
+                if (targetMetric != null) {
+                    metricKey = targetMetric.getKey();
+                } else if (!"COUNT".equals(aggregation)) {
                     for (ColumnDefinition c : dataset.getColumns()) {
-                        if (c.isNumeric() && (lq.contains(c.getOriginalName().toLowerCase()) || lq.contains(c.getKey().toLowerCase()))) {
+                        if (c.isNumeric()) {
                             metricKey = c.getKey();
+                            targetMetric = c;
                             break;
-                        }
-                    }
-                    if (metricKey == null) {
-                        for (ColumnDefinition c : dataset.getColumns()) {
-                            if (c.isNumeric()) {
-                                metricKey = c.getKey();
-                                break;
-                            }
                         }
                     }
                 }
 
+                String generatedTitle = (targetMetric != null)
+                        ? targetMetric.getOriginalName() + " por " + targetDim.getOriginalName()
+                        : "Distribución por " + targetDim.getOriginalName();
+
                 com.nexainsights.dto.CustomChartRequestDto chartDto = new com.nexainsights.dto.CustomChartRequestDto();
                 chartDto.setDatasetId(dataset.getId());
-                chartDto.setTitle("Distribución de " + targetDim.getOriginalName() + (metricKey != null ? " (" + aggregation + ")" : ""));
+                chartDto.setTitle(generatedTitle);
                 chartDto.setDimensionKey(targetDim.getKey());
                 chartDto.setType(chartType);
                 chartDto.setAggregation(aggregation);
@@ -325,8 +350,14 @@ public class GroqAiAssistantService {
         }
 
         // 2. Cálculos Numéricos Explícitos (Suma, Promedio, Máximo, Mínimo)
+        boolean wantsSum = lq.contains("suma") || lq.contains("total") || lq.contains("cuánto suman") || lq.contains("cuanto suman");
+        boolean wantsAvg = lq.contains("promedio") || lq.contains("media");
+        boolean wantsExtremes = lq.contains("máximo") || lq.contains("maximo") || lq.contains("mínimo") || lq.contains("minimo") || lq.contains("más alto") || lq.contains("mas alto") || lq.contains("más bajo");
+
         for (ColumnDefinition col : dataset.getColumns()) {
-            if (col.isNumeric() && (lq.contains(col.getOriginalName().toLowerCase()) || lq.contains(col.getKey().toLowerCase()))) {
+            boolean colMatched = lq.contains(col.getOriginalName().toLowerCase()) || lq.contains(col.getKey().toLowerCase());
+            // Si el usuario pregunta por suma/promedio sin nombrar la columna explícitamente pero hay una columna numérica
+            if (col.isNumeric() && (colMatched || wantsSum || wantsAvg || wantsExtremes)) {
                 List<Double> numVals = new ArrayList<>();
                 for (DataRecord r : records) {
                     Object val = r.getValue(col.getKey());
@@ -354,7 +385,7 @@ public class GroqAiAssistantService {
         }
 
         // 3. Conteo de Estados o Categorías más repetidas
-        if (lq.contains("más se repite") || lq.contains("mas se repite") || lq.contains("frecuente") || lq.contains("ranking") || lq.contains("mayor cantidad")) {
+        if (lq.contains("más se repite") || lq.contains("mas se repite") || lq.contains("frecuente") || lq.contains("ranking") || lq.contains("mayor cantidad") || lq.contains("por categoría") || lq.contains("por categoria")) {
             for (ColumnDefinition col : dataset.getColumns()) {
                 if (col.isCategorical() && col.getCategoryFrequencies() != null && !col.getCategoryFrequencies().isEmpty()) {
                     summary.append("FRECUENCIAS REALES VERIFICADAS ('").append(col.getOriginalName()).append("'):\n");
@@ -366,8 +397,23 @@ public class GroqAiAssistantService {
             }
         }
 
-        // 4. Detección de duplicados o registros vacíos
-        if (lq.contains("duplicad") || lq.contains("incomplet") || lq.contains("vacío") || lq.contains("vacio")) {
+        // 4. Filtro por Rango Temporal / Fechas
+        boolean isDateQuery = lq.contains("enero") || lq.contains("febrero") || lq.contains("marzo") || lq.contains("abril") ||
+                              lq.contains("mayo") || lq.contains("junio") || lq.contains("julio") || lq.contains("agosto") ||
+                              lq.contains("septiembre") || lq.contains("octubre") || lq.contains("noviembre") || lq.contains("diciembre") ||
+                              lq.contains("año") || lq.contains("ano") || lq.contains("mes") || lq.contains("fecha");
+        if (isDateQuery) {
+            for (ColumnDefinition col : dataset.getColumns()) {
+                if (col.isTemporal() || col.getEffectiveType() == com.nexainsights.model.DataType.DATE) {
+                    summary.append("ANÁLISIS DE FECHAS EN EL DATASET ('").append(col.getOriginalName()).append("'):\n")
+                           .append("- Rango disponible de registros: desde ").append(col.getMinDate() != null ? col.getMinDate() : "N/D")
+                           .append(" hasta ").append(col.getMaxDate() != null ? col.getMaxDate() : "N/D").append("\n");
+                }
+            }
+        }
+
+        // 5. Detección de duplicados o registros vacíos
+        if (lq.contains("duplicad") || lq.contains("incomplet") || lq.contains("vacío") || lq.contains("vacio") || lq.contains("faltan")) {
             long emptyRows = records.stream().filter(r -> {
                 for (ColumnDefinition col : dataset.getColumns()) {
                     Object v = r.getValue(col.getKey());

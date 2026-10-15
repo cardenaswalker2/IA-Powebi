@@ -370,34 +370,35 @@ public class DashboardGenerationService {
             groupedMetrics.computeIfAbsent(dimVal, k -> new ArrayList<>()).add(metricVal);
         }
 
+        // Ordenar categorías por valor descendentemente (para rankings y distribuciones útiles)
+        List<Map.Entry<String, Double>> computedList = new ArrayList<>();
+        for (Map.Entry<String, List<Double>> entry : groupedMetrics.entrySet()) {
+            List<Double> vals = entry.getValue();
+            double finalVal;
+            if ("SUM".equalsIgnoreCase(widget.getAggregation())) {
+                finalVal = Math.round(vals.stream().mapToDouble(Double::doubleValue).sum() * 100.0) / 100.0;
+            } else if ("AVG".equalsIgnoreCase(widget.getAggregation())) {
+                finalVal = Math.round(vals.stream().mapToDouble(Double::doubleValue).average().orElse(0.0) * 100.0) / 100.0;
+            } else if ("MAX".equalsIgnoreCase(widget.getAggregation())) {
+                finalVal = vals.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+            } else if ("MIN".equalsIgnoreCase(widget.getAggregation())) {
+                finalVal = vals.stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
+            } else { // COUNT o defecto
+                finalVal = vals.size();
+            }
+            computedList.add(new AbstractMap.SimpleEntry<>(entry.getKey(), finalVal));
+        }
+
+        computedList.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+
         List<String> categories = new ArrayList<>();
         List<Number> seriesData = new ArrayList<>();
 
-        for (Map.Entry<String, List<Double>> entry : groupedMetrics.entrySet()) {
-            categories.add(entry.getKey());
-            List<Double> vals = entry.getValue();
-
-            if ("SUM".equalsIgnoreCase(widget.getAggregation())) {
-                double sum = vals.stream().mapToDouble(Double::doubleValue).sum();
-                seriesData.add(Math.round(sum * 100.0) / 100.0);
-            } else if ("AVG".equalsIgnoreCase(widget.getAggregation())) {
-                double avg = vals.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-                seriesData.add(Math.round(avg * 100.0) / 100.0);
-            } else if ("MAX".equalsIgnoreCase(widget.getAggregation())) {
-                double max = vals.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
-                seriesData.add(max);
-            } else if ("MIN".equalsIgnoreCase(widget.getAggregation())) {
-                double min = vals.stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
-                seriesData.add(min);
-            } else { // COUNT o defecto
-                seriesData.add(vals.size());
-            }
-        }
-
-        // Si excede 15 categorías, conservar las 15 principales
-        if (categories.size() > 15) {
-            categories = categories.subList(0, 15);
-            seriesData = seriesData.subList(0, 15);
+        int limit = Math.min(computedList.size(), 15);
+        for (int i = 0; i < limit; i++) {
+            Map.Entry<String, Double> item = computedList.get(i);
+            categories.add(item.getKey());
+            seriesData.add(item.getValue());
         }
 
         widget.setCategories(categories);
