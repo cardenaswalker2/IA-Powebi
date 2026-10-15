@@ -44,6 +44,12 @@ public class ChatSession {
         private List<Integer> supportingRowNumbers;          // Filas originales de Excel encontradas
         private String executedQuery;                        // Explicación de la consulta ejecutada
 
+        // Tarjeta de acción interactiva persistente
+        private String actionType;
+        private String actionTitle;
+        private String downloadUrl;
+        private String actionDescription;
+
         public ChatMessage() {}
 
         public ChatMessage(String role, String content) {
@@ -63,6 +69,15 @@ public class ChatSession {
         public void setSupportingRowNumbers(List<Integer> supportingRowNumbers) { this.supportingRowNumbers = supportingRowNumbers; }
         public String getExecutedQuery() { return executedQuery; }
         public void setExecutedQuery(String executedQuery) { this.executedQuery = executedQuery; }
+
+        public String getActionType() { return actionType; }
+        public void setActionType(String actionType) { this.actionType = actionType; }
+        public String getActionTitle() { return actionTitle; }
+        public void setActionTitle(String actionTitle) { this.actionTitle = actionTitle; }
+        public String getDownloadUrl() { return downloadUrl; }
+        public void setDownloadUrl(String downloadUrl) { this.downloadUrl = downloadUrl; }
+        public String getActionDescription() { return actionDescription; }
+        public void setActionDescription(String actionDescription) { this.actionDescription = actionDescription; }
     }
 
     // Getters and Setters

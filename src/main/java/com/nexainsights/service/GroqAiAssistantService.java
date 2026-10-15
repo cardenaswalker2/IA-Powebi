@@ -115,17 +115,20 @@ public class GroqAiAssistantService {
         }
 
         // 4. Prompt para Groq
-        String systemPrompt = "Eres NEXA Insights AI, el asistente inteligente de analítica de datos y Business Intelligence empresarial integrado en NEXA INSIGHTS.\n"
+        String systemPrompt = "Eres NEXA Insights AI, el analista de inteligencia de datos empresarial de NEXA INSIGHTS.\n"
+                + "Capacidades Operativas Reales del Sistema:\n"
+                + "- NEXA INSIGHTS cuenta con motores nativos en el servidor para generar y descargar informes PDF oficiales (ejecutivos, de auditoría de cambios y técnicos) y libros Excel (.xlsx).\n"
+                + "- Cuando el usuario te pida generar, crear o descargar un PDF o un Excel, o te pida un informe sobre los cambios, las horas o los costos, CONFÍRMALE cordialmente que el documento oficial ha sido generado y procesado con éxito con los datos actuales y que puede descargarlo directamente desde el botón adjunto a continuación.\n"
+                + "- NUNCA digas que no puedes generar archivos, que solo manejas texto o que el usuario debe copiar y pegar a Word o Google Docs para hacer un PDF. NEXA INSIGHTS genera el PDF y el Excel reales de forma automática en el backend.\n"
+                + "\n"
                 + "Personalidad y Rol:\n"
                 + "- Eres una Inteligencia Artificial avanzada creada para analizar datos, responder consultas analíticas, generar resúmenes ejecutivos y ayudar a los usuarios a tomar decisiones con su información.\n"
-                + "- Si el usuario te saluda, te pregunta quién eres, si eres una IA, o te hace preguntas generales o sobre tus capacidades, responde de forma natural, cordial, elocuente y profesional como la IA de NEXA INSIGHTS, sin confundirte ni buscar datos inexistentes de ti mismo en el archivo.\n"
+                + "- Si el usuario te saluda, te pregunta quién eres, si eres una IA, o te hace preguntas generales o sobre tus capacidades, responde de forma natural, cordial, elocuente y profesional como la IA de NEXA INSIGHTS.\n"
                 + "\n"
                 + "Reglas para Consultas sobre los Datos del Dataset:\n"
-                + "1. Cuando te pregunten sobre los datos (personas, auditorías, ventas, estados, fechas, números, etc.), básate en los datos reales y consolidados provistos.\n"
-                + "2. Cita los números de fila originales de Excel donde encontraste la información (ej. 'En la fila 4...').\n"
-                + "3. Si piden un resumen ejecutivo, presenta una síntesis clara con los hallazgos principales, porcentajes de cumplimiento y puntos de atención.\n"
-                + "4. No inventes registros que no existan. Si un registro o fecha específica no está presente en el archivo, dilo claramente.\n"
-                + "5. Mantén siempre un tono ejecutivo, inteligente, claro y en español impecable.";
+                + "1. Cuando te pregunten sobre los datos (personas, horas, costos, auditorías, ventas, estados, fechas, números, etc.), básate en los datos reales provistos.\n"
+                + "2. Cita los números de fila originales de Excel donde encontraste la información.\n"
+                + "3. Si piden un resumen ejecutivo o análisis de cambios, presenta los hallazgos principales de forma concisa y profesional en español.";
 
         String userPromptContent = "INFORMACIÓN DEL DATASET ACTIVO:\n" + schemaSummary.toString()
                 + "\nEVIDENCIA Y REGISTROS ENCONTRADOS EN BASE DE DATOS:\n" + evidenceContext.toString()
@@ -134,12 +137,56 @@ public class GroqAiAssistantService {
         // 5. Llamada a la API de Groq
         String aiTextResponse = callGroqApi(systemPrompt, userPromptContent);
 
-        // 6. Guardar en el historial de sesión
+        // 6. Detección de intenciones operativas reales (Generación de PDF, Excel, Navegación)
+        String actionType = null;
+        String actionTitle = null;
+        String downloadUrl = null;
+        String actionDescription = null;
+
+        String lowerQuery = userQuery.toLowerCase();
+        if (lowerQuery.contains("pdf") || lowerQuery.contains("informe") || lowerQuery.contains("reporte")) {
+            String reportType = "executive";
+            if (lowerQuery.contains("cambio") || lowerQuery.contains("modificaci") || lowerQuery.contains("auditor") || lowerQuery.contains("trazabilidad")) {
+                reportType = "audit";
+            } else if (lowerQuery.contains("técnico") || lowerQuery.contains("tecnico") || lowerQuery.contains("esquema")) {
+                reportType = "technical";
+            }
+            actionType = "DOWNLOAD_PDF";
+            actionTitle = "📄 Descargar Informe PDF Oficial";
+            downloadUrl = "/reports/export/pdf/" + dataset.getId() + "?type=" + reportType;
+            actionDescription = "Informe generado con éxito con datos activos, KPIs y trazabilidad completa.";
+        } else if (lowerQuery.contains("excel") || lowerQuery.contains("xlsx") || lowerQuery.contains("descargar datos")) {
+            actionType = "DOWNLOAD_XLSX";
+            actionTitle = "📊 Descargar Libro Excel (.XLSX)";
+            downloadUrl = "/reports/export/xlsx/" + dataset.getId();
+            actionDescription = "Libro de cálculo actualizado con todas las ediciones y filas conservadas.";
+        } else if (lowerQuery.contains("editar") || lowerQuery.contains("tabla") || lowerQuery.contains("modificar") || lowerQuery.contains("corregir")) {
+            actionType = "OPEN_EDITOR";
+            actionTitle = "✏️ Abrir Editor de Datos";
+            downloadUrl = "/explorer?datasetId=" + dataset.getId();
+            actionDescription = "Acceso al editor tabular con guardado en vivo y registro de versiones.";
+        } else if (lowerQuery.contains("gráfico") || lowerQuery.contains("grafico") || lowerQuery.contains("dashboard") || lowerQuery.contains("visualizar")) {
+            actionType = "CHART_VIEW";
+            actionTitle = "📈 Ver Gráficos y Dashboard Interactivo";
+            downloadUrl = "/dashboard/" + dataset.getId();
+            actionDescription = "Visualizaciones dinámicas interactivas adaptadas al esquema de este archivo.";
+        } else if (lowerQuery.contains("comparar") || lowerQuery.contains("relacion") || lowerQuery.contains("diferencia")) {
+            actionType = "RELATIONSHIPS";
+            actionTitle = "🔗 Descubrimiento de Relaciones y Comparación";
+            downloadUrl = "/relationships";
+            actionDescription = "Explora coincidencias de claves y correlaciones entre conjuntos de datos.";
+        }
+
+        // 7. Guardar en el historial de sesión (incluyendo datos de acción)
         ChatSession.ChatMessage userMsg = new ChatSession.ChatMessage("user", userQuery);
         ChatSession.ChatMessage botMsg = new ChatSession.ChatMessage("assistant", aiTextResponse);
         botMsg.setSupportingRowNumbers(supportingRows);
         botMsg.setSupportingRecords(supportingRecordsData);
-        botMsg.setExecutedQuery("Búsqueda controlada de texto y filtros sobre campos del dataset: " + dataset.getName());
+        botMsg.setExecutedQuery("Consulta sobre dataset: " + dataset.getName());
+        botMsg.setActionType(actionType);
+        botMsg.setActionTitle(actionTitle);
+        botMsg.setDownloadUrl(downloadUrl);
+        botMsg.setActionDescription(actionDescription);
 
         session.getMessages().add(userMsg);
         session.getMessages().add(botMsg);
@@ -150,41 +197,10 @@ public class GroqAiAssistantService {
         responseDto.setSupportingRecords(supportingRecordsData);
         responseDto.setSupportingRows(supportingRows);
         responseDto.setExecutedQuery(botMsg.getExecutedQuery());
-
-        // Detección de intenciones operativas reales (Generación de PDF, Excel, Navegación)
-        String lowerQuery = userQuery.toLowerCase();
-        if (lowerQuery.contains("pdf") || lowerQuery.contains("informe") || lowerQuery.contains("reporte")) {
-            String reportType = "executive";
-            if (lowerQuery.contains("cambio") || lowerQuery.contains("modificaci") || lowerQuery.contains("auditor")) {
-                reportType = "audit";
-            } else if (lowerQuery.contains("técnico") || lowerQuery.contains("tecnico") || lowerQuery.contains("esquema")) {
-                reportType = "technical";
-            }
-            responseDto.setActionType("DOWNLOAD_PDF");
-            responseDto.setActionTitle("📄 Descargar Informe PDF Oficial");
-            responseDto.setDownloadUrl("/reports/export/pdf/" + dataset.getId() + "?type=" + reportType);
-            responseDto.setActionDescription("Informe generado con éxito con datos activos, KPIs y trazabilidad completa.");
-        } else if (lowerQuery.contains("excel") || lowerQuery.contains("xlsx") || lowerQuery.contains("descargar datos")) {
-            responseDto.setActionType("DOWNLOAD_XLSX");
-            responseDto.setActionTitle("📊 Descargar Libro Excel (.XLSX)");
-            responseDto.setDownloadUrl("/reports/export/xlsx/" + dataset.getId());
-            responseDto.setActionDescription("Libro de cálculo actualizado con todas las ediciones y filas conservadas.");
-        } else if (lowerQuery.contains("editar") || lowerQuery.contains("tabla") || lowerQuery.contains("modificar") || lowerQuery.contains("corregir")) {
-            responseDto.setActionType("OPEN_EDITOR");
-            responseDto.setActionTitle("✏️ Abrir Editor de Datos");
-            responseDto.setDownloadUrl("/explorer?datasetId=" + dataset.getId());
-            responseDto.setActionDescription("Acceso al editor tabular con guardado en vivo y registro de versiones.");
-        } else if (lowerQuery.contains("gráfico") || lowerQuery.contains("grafico") || lowerQuery.contains("dashboard") || lowerQuery.contains("visualizar")) {
-            responseDto.setActionType("CHART_VIEW");
-            responseDto.setActionTitle("📈 Ver Gráficos y Dashboard Interactivo");
-            responseDto.setDownloadUrl("/dashboard/" + dataset.getId());
-            responseDto.setActionDescription("Visualizaciones dinámicas interactivas adaptadas al esquema de este archivo.");
-        } else if (lowerQuery.contains("comparar") || lowerQuery.contains("relacion") || lowerQuery.contains("diferencia")) {
-            responseDto.setActionType("RELATIONSHIPS");
-            responseDto.setActionTitle("🔗 Descubrimiento de Relaciones y Comparación");
-            responseDto.setDownloadUrl("/relationships");
-            responseDto.setActionDescription("Explora coincidencias de claves y correlaciones entre conjuntos de datos.");
-        }
+        responseDto.setActionType(actionType);
+        responseDto.setActionTitle(actionTitle);
+        responseDto.setDownloadUrl(downloadUrl);
+        responseDto.setActionDescription(actionDescription);
 
         return responseDto;
     }
