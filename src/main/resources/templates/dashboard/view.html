@@ -470,38 +470,95 @@
         </div>
     </div>
 
-    <!-- Modal Nuevo Gráfico -->
-    <div id="newChartModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;">
-        <div class="compact-table-card" style="width: 460px; max-width: 90%; margin: 0; padding: 24px;">
-            <h3 style="font-size: 16px; font-weight: 700; color: var(--brand-dark); margin-bottom: 6px;">Construir Nuevo Gráfico</h3>
-            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">Configura un widget interactivo con los datos del dataset.</p>
-
-            <div style="display: flex; flex-direction: column; gap: 12px;">
+    <!-- Modal Nuevo Gráfico Avanzado e Interactivo -->
+    <div id="newChartModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+        <div class="compact-table-card" style="width: 760px; max-width: 95%; max-height: 90vh; overflow-y: auto; margin: 0; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); border-radius: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                 <div>
-                    <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Título del Gráfico</label>
-                    <input type="text" id="chartTitleInput" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px;" placeholder="Ej: Distribución por Estado de Auditoría">
+                    <h3 style="font-size: 18px; font-weight: 700; color: var(--brand-dark); margin: 0 0 4px 0;">Construir Nuevo Gráfico</h3>
+                    <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">Configura un widget analítico profesional con agregación matemática y previsualización en tiempo real.</p>
+                </div>
+                <button type="button" class="btn-chart-tool" onclick="closeNewChartModal()" style="font-size: 16px; font-weight: bold; padding: 4px 10px;">✕</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <!-- Columna Izquierda: Configuración -->
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Título del Gráfico *</label>
+                        <input type="text" id="chartTitleInput" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; width: 100%;" placeholder="Ej: Distribución de Ventas por Ciudad">
+                    </div>
+
+                    <div>
+                        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Descripción Opcional del Análisis</label>
+                        <input type="text" id="chartDescInput" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; width: 100%;" placeholder="Ej: Comparación mensual de importes cerrados">
+                    </div>
+
+                    <div>
+                        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Columna de Dimensión o Categoría (Eje X / Agrupador) *</label>
+                        <select id="chartDimensionSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; background:#fff; width: 100%;" onchange="updateNewChartPreview()">
+                            <option th:each="col : ${dataset.columns}" th:value="${col.key}" th:text="${col.originalName} + ' (' + ${col.effectiveType} + ')'"></option>
+                        </select>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Operación / Métrica</label>
+                            <select id="chartAggregationSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; background:#fff; width: 100%;" onchange="toggleMetricColVisibility(); updateNewChartPreview();">
+                                <option value="COUNT">Cantidad de Registros (COUNT)</option>
+                                <option value="SUM">Suma de Valores (SUM)</option>
+                                <option value="AVG">Promedio (AVG)</option>
+                                <option value="MAX">Valor Máximo (MAX)</option>
+                                <option value="MIN">Valor Mínimo (MIN)</option>
+                            </select>
+                        </div>
+                        <div id="chartMetricColContainer" style="display: none;">
+                            <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Columna de Valor (Eje Y)</label>
+                            <select id="chartMetricKeySelect" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; background:#fff; width: 100%;" onchange="updateNewChartPreview()">
+                                <option th:each="col : ${dataset.columns}" th:value="${col.key}" th:text="${col.originalName} + ' (' + ${col.effectiveType} + ')'"></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Tipo de Gráfico</label>
+                        <select id="chartTypeSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; background:#fff; width: 100%;" onchange="updateNewChartPreview()">
+                            <option value="bar">📊 Barras Verticales</option>
+                            <option value="ranking">📈 Ranking Horizontal</option>
+                            <option value="doughnut">🍩 Rosca / Dona</option>
+                            <option value="pie">🥧 Circular / Torta</option>
+                            <option value="line">📉 Línea Continua</option>
+                        </select>
+                    </div>
+
+                    <div style="border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--brand-dark); display: block; margin-bottom: 6px;">Filtro Opcional de Inclusión</span>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <select id="chartFilterColSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 6px 10px; font-size: 11px; border-radius: 6px; background:#fff;" onchange="updateNewChartPreview()">
+                                <option value="">-- Sin filtro previo --</option>
+                                <option th:each="col : ${dataset.columns}" th:value="${col.key}" th:text="${col.originalName}"></option>
+                            </select>
+                            <input type="text" id="chartFilterValInput" class="search-input" style="border: 1px solid var(--border-color); padding: 6px 10px; font-size: 11px; border-radius: 6px;" placeholder="Valor a filtrar..." oninput="updateNewChartPreview()">
+                        </div>
+                    </div>
                 </div>
 
-                <div>
-                    <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Columna de Dimensión</label>
-                    <select id="chartDimensionSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; background:#fff;">
-                        <option th:each="col : ${dataset.columns}" th:value="${col.key}" th:text="${col.originalName} + ' (' + ${col.effectiveType} + ')'"></option>
-                    </select>
+                <!-- Columna Derecha: Vista Previa en Vivo -->
+                <div style="display: flex; flex-direction: column; background: #F8FAF9; border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 700; color: var(--brand-dark);">👁️ Vista Previa en Tiempo Real</span>
+                        <span id="previewStatusBadge" style="font-size: 10px; background: #E7EBE8; padding: 2px 8px; border-radius: 12px; color: #555E5C;">Calculando datos reales</span>
+                    </div>
+                    <div id="chartPreviewContainer" style="flex: 1; min-height: 260px; width: 100%;"></div>
+                    <div id="previewErrorMessage" style="display: none; font-size: 11px; color: var(--danger); margin-top: 8px; text-align: center;"></div>
                 </div>
+            </div>
 
-                <div>
-                    <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Tipo de Visualización</label>
-                    <select id="chartTypeSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; background:#fff;">
-                        <option value="bar">Barras Verticales</option>
-                        <option value="ranking">Ranking Horizontal</option>
-                        <option value="doughnut">Rosca / Doughnut</option>
-                        <option value="line">Línea Temporal</option>
-                    </select>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+                <span style="font-size: 11px; color: var(--text-secondary);">Los cálculos se ejecutan sobre los datos reales del dataset.</span>
+                <div style="display: flex; gap: 8px;">
                     <button type="button" class="btn-header" onclick="closeNewChartModal()">Cancelar</button>
-                    <button type="button" class="btn-header btn-save" onclick="submitNewChart()">Guardar Gráfico</button>
+                    <button type="button" class="btn-header btn-save" onclick="submitNewChart()">Guardar Gráfico en Dashboard</button>
                 </div>
             </div>
         </div>
@@ -932,12 +989,40 @@
                     `;
                 }
 
+                // Renderizar gráfico interactivo en el chat si fue generado por la IA
+                let chatChartHtml = '';
+                if (data.chartWidget) {
+                    const uniqueChatChartId = 'chat_chart_' + Date.now();
+                    chatChartHtml = `
+                        <div class="chat-chart-card" style="margin-top: 12px; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <h5 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--brand-dark);">${data.chartWidget.title}</h5>
+                                <span style="font-size: 10px; background: #E6F0ED; color: var(--brand-dark); padding: 2px 6px; border-radius: 4px; font-weight: 600;">En Vivo</span>
+                            </div>
+                            <div id="${uniqueChatChartId}" style="width: 100%; height: 220px;"></div>
+                            <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+                                <button type="button" class="btn-chart-tool" onclick="window.location.reload()" style="font-size: 11px;">
+                                    📌 Ver en Panel Principal de Gráficos
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        const chartEl = document.getElementById(uniqueChatChartId);
+                        if (chartEl) {
+                            const cInstance = echarts.init(chartEl);
+                            renderGenericEchart(cInstance, data.chartWidget.type, data.chartWidget.categories, data.chartWidget.seriesData);
+                        }
+                    }, 150);
+                }
+
                 botBubble.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
                         <span style="font-weight: 700; color: var(--brand-dark);">NEXA Insights</span>
                         <span style="font-size: 10px; color: var(--text-secondary);">Recién</span>
                     </div>
                     <div class="ai-markdown-body" style="line-height: 1.45;">${parsedText}</div>
+                    ${chatChartHtml}
                     ${actionCardHtml}
                     ${evidenceHtml}
                     <div class="ai-action-btn-list" style="margin-top: 10px;">
@@ -957,15 +1042,51 @@
             panel.innerHTML = `<div class="ai-bubble-bot">Conversación reiniciada. Puedes consultar cualquier aspecto de tus datos indexados.</div>`;
         }
 
-        // Modal de nuevos gráficos
-        function openNewChartModal() { document.getElementById('newChartModal').style.display = 'flex'; }
-        function closeNewChartModal() { document.getElementById('newChartModal').style.display = 'none'; }
-        function submitNewChart() {
-            const title = document.getElementById('chartTitleInput').value;
+        // --- GESTIÓN AVANZADA DEL MODAL CONSTRUIR NUEVO GRÁFICO ---
+        let newChartPreviewInstance = null;
+
+        function openNewChartModal() {
+            document.getElementById('newChartModal').style.display = 'flex';
+            toggleMetricColVisibility();
+            setTimeout(updateNewChartPreview, 100);
+        }
+
+        function closeNewChartModal() {
+            document.getElementById('newChartModal').style.display = 'none';
+            if (newChartPreviewInstance) {
+                newChartPreviewInstance.dispose();
+                newChartPreviewInstance = null;
+            }
+        }
+
+        function toggleMetricColVisibility() {
+            const agg = document.getElementById('chartAggregationSelect').value;
+            const container = document.getElementById('chartMetricColContainer');
+            if (agg === 'COUNT') {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'block';
+            }
+        }
+
+        function updateNewChartPreview() {
+            const previewDom = document.getElementById('chartPreviewContainer');
+            if (!previewDom) return;
+
+            const title = document.getElementById('chartTitleInput').value.trim() || 'Vista Previa';
             const dimensionKey = document.getElementById('chartDimensionSelect').value;
             const type = document.getElementById('chartTypeSelect').value;
+            const aggregation = document.getElementById('chartAggregationSelect').value;
+            const metricKey = document.getElementById('chartMetricKeySelect') ? document.getElementById('chartMetricKeySelect').value : null;
+            const filterCol = document.getElementById('chartFilterColSelect').value;
+            const filterVal = document.getElementById('chartFilterValInput').value.trim();
 
-            fetch('/dashboard/custom-chart', {
+            const badge = document.getElementById('previewStatusBadge');
+            const errBox = document.getElementById('previewErrorMessage');
+            if (badge) badge.textContent = 'Calculando...';
+            if (errBox) errBox.style.display = 'none';
+
+            fetch('/dashboard/custom-chart/preview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -973,11 +1094,137 @@
                     title: title,
                     dimensionKey: dimensionKey,
                     type: type,
-                    aggregation: 'COUNT'
+                    aggregation: aggregation,
+                    metricKey: metricKey,
+                    filterColumnKey: filterCol,
+                    filterValue: filterVal
                 })
             })
+            .then(res => {
+                if (!res.ok) throw new Error('Error al procesar parámetros');
+                return res.json();
+            })
+            .then(widget => {
+                if (badge) badge.textContent = 'Actualizado (' + (widget.categories ? widget.categories.length : 0) + ' grupos)';
+                if (!newChartPreviewInstance) {
+                    newChartPreviewInstance = echarts.init(previewDom);
+                }
+                renderGenericEchart(newChartPreviewInstance, widget.type, widget.categories, widget.seriesData);
+                newChartPreviewInstance.resize();
+            })
+            .catch(err => {
+                if (badge) badge.textContent = 'Advertencia';
+                if (errBox) {
+                    errBox.textContent = 'Ajusta los parámetros: ' + err.message;
+                    errBox.style.display = 'block';
+                }
+            });
+        }
+
+        function renderGenericEchart(myChart, type, categories, seriesData) {
+            let option = {};
+            if (type === 'doughnut' || type === 'pie') {
+                const pieData = (categories || []).map((c, idx) => ({
+                    name: c,
+                    value: seriesData[idx]
+                }));
+                option = {
+                    color: colorPalette,
+                    tooltip: { trigger: 'item', formatter: '{b}: <strong>{c}</strong> ({d}%)' },
+                    legend: { orient: 'horizontal', bottom: '0', textStyle: { fontSize: 10 } },
+                    series: [{
+                        type: 'pie',
+                        radius: type === 'doughnut' ? ['40%', '65%'] : '65%',
+                        itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+                        data: pieData
+                    }]
+                };
+            } else if (type === 'ranking') {
+                option = {
+                    color: ['#176B5B'],
+                    tooltip: { trigger: 'axis' },
+                    grid: { left: '3%', right: '8%', bottom: '3%', top: '5%', containLabel: true },
+                    xAxis: { type: 'value', splitLine: { show: false } },
+                    yAxis: { type: 'category', data: categories, inverse: true },
+                    series: [{
+                        type: 'bar',
+                        data: seriesData,
+                        barWidth: 12,
+                        itemStyle: { borderRadius: [0, 6, 6, 0] },
+                        label: { show: true, position: 'right', fontSize: 10, fontWeight: 'bold' }
+                    }]
+                };
+            } else if (type === 'line') {
+                option = {
+                    color: ['#176B5B'],
+                    tooltip: { trigger: 'axis' },
+                    grid: { left: '3%', right: '4%', bottom: '10%', top: '10%', containLabel: true },
+                    xAxis: { type: 'category', data: categories },
+                    yAxis: { type: 'value' },
+                    series: [{
+                        data: seriesData,
+                        type: 'line',
+                        smooth: true,
+                        areaStyle: { color: 'rgba(23, 107, 91, 0.2)' }
+                    }]
+                };
+            } else {
+                option = {
+                    color: colorPalette,
+                    tooltip: { trigger: 'axis' },
+                    grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+                    xAxis: { type: 'category', data: categories, axisLabel: { interval: 0, rotate: categories && categories.length > 5 ? 20 : 0, fontSize: 10 } },
+                    yAxis: { type: 'value' },
+                    series: [{
+                        data: (seriesData || []).map((val, idx) => ({
+                            value: val,
+                            itemStyle: { color: colorPalette[idx % colorPalette.length], borderRadius: [4, 4, 0, 0] }
+                        })),
+                        type: 'bar',
+                        barWidth: 20
+                    }]
+                };
+            }
+            myChart.setOption(option, true);
+        }
+
+        function submitNewChart() {
+            const title = document.getElementById('chartTitleInput').value.trim();
+            const description = document.getElementById('chartDescInput').value.trim();
+            const dimensionKey = document.getElementById('chartDimensionSelect').value;
+            const type = document.getElementById('chartTypeSelect').value;
+            const aggregation = document.getElementById('chartAggregationSelect').value;
+            const metricKey = document.getElementById('chartMetricKeySelect') ? document.getElementById('chartMetricKeySelect').value : null;
+            const filterCol = document.getElementById('chartFilterColSelect').value;
+            const filterVal = document.getElementById('chartFilterValInput').value.trim();
+
+            if (!title) {
+                alert('Por favor introduce un título para el gráfico.');
+                document.getElementById('chartTitleInput').focus();
+                return;
+            }
+
+            fetch('/dashboard/custom-chart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    datasetId: datasetId,
+                    title: title,
+                    description: description,
+                    dimensionKey: dimensionKey,
+                    type: type,
+                    aggregation: aggregation,
+                    metricKey: metricKey,
+                    filterColumnKey: filterCol,
+                    filterValue: filterVal
+                })
+            })
+            .then(res => {
+                if (!res.ok) return res.text().then(t => { throw new Error(t); });
+                return res.json();
+            })
             .then(() => window.location.reload())
-            .catch(err => alert(err.message));
+            .catch(err => alert('Error al guardar: ' + err.message));
         }
 
         // Iniciar todo

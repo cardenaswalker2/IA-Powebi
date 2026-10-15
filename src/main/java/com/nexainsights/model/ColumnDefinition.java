@@ -95,4 +95,8 @@ public class ColumnDefinition {
 
     public boolean isMeasure() { return isMeasure; }
     public void setMeasure(boolean measure) { isMeasure = measure; }
+
+    public boolean isNumeric() {
+        return getEffectiveType() == DataType.NUMBER || isMeasure;
+    }
 }

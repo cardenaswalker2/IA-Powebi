@@ -92,4 +92,16 @@ public class DashboardController {
             return org.springframework.http.ResponseEntity.badRequest().body("Error al crear gráfico: " + e.getMessage());
         }
     }
+
+    @org.springframework.web.bind.annotation.PostMapping("/custom-chart/preview")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public org.springframework.http.ResponseEntity<?> previewCustomChart(@org.springframework.web.bind.annotation.RequestBody com.nexainsights.dto.CustomChartRequestDto dto) {
+        try {
+            Dataset dataset = datasetRepository.findById(dto.getDatasetId()).orElseThrow();
+            com.nexainsights.model.DashboardConfig.ChartWidget widget = dashboardService.previewCustomChart(dto, dataset);
+            return org.springframework.http.ResponseEntity.ok(widget);
+        } catch (Exception e) {
+            return org.springframework.http.ResponseEntity.badRequest().body("Error en previsualización: " + e.getMessage());
+        }
+    }
 }

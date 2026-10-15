@@ -2,20 +2,26 @@ package com.nexainsights.service;
 
 import com.nexainsights.model.ColumnDefinition;
 import com.nexainsights.model.DashboardConfig;
+import com.nexainsights.model.DataRecord;
 import com.nexainsights.model.DataType;
 import com.nexainsights.model.Dataset;
 import com.nexainsights.repository.DashboardConfigRepository;
+import com.nexainsights.repository.DataRecordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.text.NumberFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DashboardGenerationService {
 
     @Autowired
     private DashboardConfigRepository dashboardRepository;
+
+    @Autowired
+    private DataRecordRepository dataRecordRepository;
 
     /**
      * Construye un dashboard inteligente adaptado al esquema real del dataset:
@@ -280,6 +286,25 @@ public class DashboardGenerationService {
      * Construye y añade un nuevo gráfico personalizado al dashboard del dataset
      */
     public DashboardConfig.ChartWidget addCustomChart(com.nexainsights.dto.CustomChartRequestDto dto, Dataset dataset) {
+        DashboardConfig.ChartWidget widget = calculateChartData(dto, dataset);
+
+        // Persistir en el DashboardConfig
+        DashboardConfig config = dashboardRepository.findByDatasetId(dataset.getId())
+                .orElseGet(() -> new DashboardConfig(dataset.getId(), dataset.getProjectId(), "Dashboard"));
+        config.getCharts().add(widget);
+        dashboardRepository.save(config);
+
+        return widget;
+    }
+
+    /**
+     * Genera la vista previa en vivo sin persistir
+     */
+    public DashboardConfig.ChartWidget previewCustomChart(com.nexainsights.dto.CustomChartRequestDto dto, Dataset dataset) {
+        return calculateChartData(dto, dataset);
+    }
+
+    private DashboardConfig.ChartWidget calculateChartData(com.nexainsights.dto.CustomChartRequestDto dto, Dataset dataset) {
         ColumnDefinition dimCol = dataset.findColumnByKey(dto.getDimensionKey());
         if (dimCol == null) {
             dimCol = dataset.findColumnByName(dto.getDimensionKey());
@@ -290,38 +315,93 @@ public class DashboardGenerationService {
 
         DashboardConfig.ChartWidget widget = new DashboardConfig.ChartWidget();
         widget.setId("custom_" + System.currentTimeMillis());
-        widget.setTitle((dto.getTitle() != null && !dto.getTitle().trim().isEmpty())
+        
+        String chartTitle = (dto.getTitle() != null && !dto.getTitle().trim().isEmpty())
                 ? dto.getTitle().trim()
-                : "Análisis de " + dimCol.getOriginalName());
-        widget.setType(dto.getType() != null ? dto.getType() : "bar");
+                : (dto.getAggregation() != null && !"COUNT".equalsIgnoreCase(dto.getAggregation())
+                    ? dto.getAggregation() + " de " + (dto.getMetricKey() != null ? dto.getMetricKey() : "") + " por " + dimCol.getOriginalName()
+                    : "Distribución por " + dimCol.getOriginalName());
+        widget.setTitle(chartTitle);
+
+        String chartType = dto.getType() != null ? dto.getType().toLowerCase() : "bar";
+        widget.setType(chartType);
         widget.setDimensionKey(dimCol.getKey());
         widget.setDimensionName(dimCol.getOriginalName());
-        widget.setAggregation(dto.getAggregation() != null ? dto.getAggregation() : "COUNT");
-        widget.setDescription("Calculado sobre columna " + dimCol.getOriginalName());
+        widget.setMetricKey(dto.getMetricKey() != null ? dto.getMetricKey() : "COUNT");
+        widget.setAggregation(dto.getAggregation() != null ? dto.getAggregation().toUpperCase() : "COUNT");
+        widget.setDescription(dto.getDescription() != null && !dto.getDescription().trim().isEmpty() 
+                ? dto.getDescription().trim() 
+                : "Agrupación calculada sobre " + dimCol.getOriginalName());
 
-        // Calcular datos usando frecuencias existentes o muestreo
+        // Consultar registros en MongoDB respetando filtros
+        List<DataRecord> records = dataRecordRepository.findByDatasetId(dataset.getId());
+        if (dto.getFilterColumnKey() != null && !dto.getFilterColumnKey().isEmpty() && dto.getFilterValue() != null && !dto.getFilterValue().isEmpty()) {
+            String filterVal = dto.getFilterValue().trim().toLowerCase();
+            records = records.stream()
+                    .filter(r -> {
+                        Object val = r.getValue(dto.getFilterColumnKey());
+                        return val != null && val.toString().toLowerCase().contains(filterVal);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        // Agrupar y calcular agregación matemática
+        Map<String, List<Double>> groupedMetrics = new LinkedHashMap<>();
+        for (DataRecord r : records) {
+            Object rawDim = r.getValue(dimCol.getKey());
+            String dimVal = rawDim != null ? rawDim.toString().trim() : "(Sin valor)";
+            if (dimVal.isEmpty()) dimVal = "(Sin valor)";
+
+            Double metricVal = 1.0;
+            if (!"COUNT".equalsIgnoreCase(widget.getAggregation()) && dto.getMetricKey() != null && !dto.getMetricKey().isEmpty()) {
+                Object rawMetric = r.getValue(dto.getMetricKey());
+                if (rawMetric != null) {
+                    try {
+                        String clean = rawMetric.toString().replaceAll("[^0-9.-]", "");
+                        metricVal = Double.parseDouble(clean);
+                    } catch (Exception e) {
+                        metricVal = 0.0;
+                    }
+                } else {
+                    metricVal = 0.0;
+                }
+            }
+
+            groupedMetrics.computeIfAbsent(dimVal, k -> new ArrayList<>()).add(metricVal);
+        }
+
         List<String> categories = new ArrayList<>();
         List<Number> seriesData = new ArrayList<>();
 
-        if (dimCol.getCategoryFrequencies() != null && !dimCol.getCategoryFrequencies().isEmpty()) {
-            dimCol.getCategoryFrequencies().forEach((k, v) -> {
-                categories.add(k);
-                seriesData.add(v);
-            });
-        } else {
-            categories.add("Total");
-            seriesData.add(dataset.getTotalRows());
+        for (Map.Entry<String, List<Double>> entry : groupedMetrics.entrySet()) {
+            categories.add(entry.getKey());
+            List<Double> vals = entry.getValue();
+
+            if ("SUM".equalsIgnoreCase(widget.getAggregation())) {
+                double sum = vals.stream().mapToDouble(Double::doubleValue).sum();
+                seriesData.add(Math.round(sum * 100.0) / 100.0);
+            } else if ("AVG".equalsIgnoreCase(widget.getAggregation())) {
+                double avg = vals.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+                seriesData.add(Math.round(avg * 100.0) / 100.0);
+            } else if ("MAX".equalsIgnoreCase(widget.getAggregation())) {
+                double max = vals.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+                seriesData.add(max);
+            } else if ("MIN".equalsIgnoreCase(widget.getAggregation())) {
+                double min = vals.stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
+                seriesData.add(min);
+            } else { // COUNT o defecto
+                seriesData.add(vals.size());
+            }
+        }
+
+        // Si excede 15 categorías, conservar las 15 principales
+        if (categories.size() > 15) {
+            categories = categories.subList(0, 15);
+            seriesData = seriesData.subList(0, 15);
         }
 
         widget.setCategories(categories);
         widget.setSeriesData(seriesData);
-
-        // Persistir en el DashboardConfig
-        DashboardConfig config = dashboardRepository.findByDatasetId(dataset.getId())
-                .orElseGet(() -> new DashboardConfig(dataset.getId(), dataset.getProjectId(), "Dashboard"));
-        config.getCharts().add(widget);
-        dashboardRepository.save(config);
-
         return widget;
     }
 }

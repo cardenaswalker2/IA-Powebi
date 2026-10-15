@@ -11,6 +11,7 @@ import java.util.List;
 @Repository
 public interface DataRecordRepository extends MongoRepository<DataRecord, String> {
     Page<DataRecord> findByDatasetId(String datasetId, Pageable pageable);
+    List<DataRecord> findByDatasetId(String datasetId);
     List<DataRecord> findTop50ByDatasetId(String datasetId);
     void deleteByDatasetId(String datasetId);
     long countByDatasetId(String datasetId);

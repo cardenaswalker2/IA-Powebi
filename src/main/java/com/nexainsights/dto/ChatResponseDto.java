@@ -11,10 +11,12 @@ public class ChatResponseDto {
     private String executedQuery;
 
     // Acción directa interactiva
-    private String actionType;       // "DOWNLOAD_PDF", "DOWNLOAD_XLSX", "OPEN_EDITOR", "CHART_VIEW"
+    private String actionType;       // "DOWNLOAD_PDF", "DOWNLOAD_XLSX", "OPEN_EDITOR", "CHART_VIEW", "CHART_CREATED"
     private String actionTitle;      // Título visible de la acción
     private String downloadUrl;      // URL real y ejecutable
     private String actionDescription;// Descripción explicativa
+    private Object chartWidget;      // Widget de gráfico calculado y renderizable
+    private Map<String, Object> actionPayload; // Metadatos analíticos (cálculo real, métrica, columna, etc.)
 
     public ChatResponseDto() {}
 
@@ -49,4 +51,10 @@ public class ChatResponseDto {
 
     public String getActionDescription() { return actionDescription; }
     public void setActionDescription(String actionDescription) { this.actionDescription = actionDescription; }
+
+    public Object getChartWidget() { return chartWidget; }
+    public void setChartWidget(Object chartWidget) { this.chartWidget = chartWidget; }
+
+    public Map<String, Object> getActionPayload() { return actionPayload; }
+    public void setActionPayload(Map<String, Object> actionPayload) { this.actionPayload = actionPayload; }
 }

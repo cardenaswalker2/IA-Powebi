@@ -5,10 +5,12 @@ import java.util.List;
 public class CustomChartRequestDto {
     private String datasetId;
     private String title;
-    private String type;           // "bar", "line", "doughnut", "area", "ranking"
+    private String description;    // Descripción analítica del gráfico
+    private String type;           // "bar", "horizontal_bar", "line", "area", "doughnut", "pie", "scatter", "ranking"
     private String dimensionKey;   // Columna a agrupar
     private String metricKey;      // "COUNT" o columna numérica
-    private String aggregation;    // "COUNT", "SUM", "AVG", "MIN", "MAX"
+    private String aggregation;    // "COUNT", "SUM", "AVG", "MIN", "MAX", "DISTINCT"
+    private String timeGrain;      // "DAY", "MONTH", "YEAR", "NONE"
     private String filterColumnKey;
     private String filterValue;
 
@@ -19,6 +21,9 @@ public class CustomChartRequestDto {
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
@@ -31,6 +36,9 @@ public class CustomChartRequestDto {
 
     public String getAggregation() { return aggregation; }
     public void setAggregation(String aggregation) { this.aggregation = aggregation; }
+
+    public String getTimeGrain() { return timeGrain; }
+    public void setTimeGrain(String timeGrain) { this.timeGrain = timeGrain; }
 
     public String getFilterColumnKey() { return filterColumnKey; }
     public void setFilterColumnKey(String filterColumnKey) { this.filterColumnKey = filterColumnKey; }

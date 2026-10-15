@@ -92,12 +92,21 @@ public class GroqAiAssistantService {
             schemaSummary.append("]\n");
         }
 
-        // 3. Ejecutar búsqueda controlada en MongoDB para extraer evidencia real según la consulta del usuario
+        // 3. Motor de Cálculo Real y Análisis Matemático en Backend (Separar interpretación de cálculo real)
+        Map<String, Object> analyticalInsights = executeDeterministicAnalysis(dataset, userQuery);
+        String analyticalContextText = (String) analyticalInsights.get("contextSummary");
+        com.nexainsights.model.DashboardConfig.ChartWidget generatedChart = (com.nexainsights.model.DashboardConfig.ChartWidget) analyticalInsights.get("generatedChart");
+
+        // 4. Ejecutar búsqueda controlada en MongoDB para extraer evidencia real según la consulta del usuario
         List<DataRecord> matchedRecords = searchRelevantRecords(dataset, userQuery);
         List<Integer> supportingRows = new ArrayList<>();
         List<Map<String, Object>> supportingRecordsData = new ArrayList<>();
 
         StringBuilder evidenceContext = new StringBuilder();
+        if (analyticalContextText != null && !analyticalContextText.isEmpty()) {
+            evidenceContext.append(analyticalContextText).append("\n\n");
+        }
+
         if (!matchedRecords.isEmpty()) {
             evidenceContext.append("Se encontraron ").append(matchedRecords.size()).append(" registros coincidentes en la base de datos:\n");
             for (DataRecord rec : matchedRecords) {
@@ -110,42 +119,44 @@ public class GroqAiAssistantService {
                 supportingRecordsData.add(friendlyRow);
                 evidenceContext.append("- Fila ").append(rec.getRowNumber()).append(": ").append(friendlyRow).append("\n");
             }
-        } else {
+        } else if (analyticalContextText == null || analyticalContextText.isEmpty()) {
             evidenceContext.append("No se encontraron registros individuales específicos con los términos de búsqueda, pero puedes responder analizando el esquema y las estadísticas consolidadas del dataset.");
         }
 
-        // 4. Prompt para Groq
+        // 5. Prompt para Groq
         String systemPrompt = "Eres NEXA Insights AI, el analista de inteligencia de datos empresarial de NEXA INSIGHTS.\n"
                 + "Capacidades Operativas Reales del Sistema:\n"
+                + "- Tienes acceso a un motor de cálculo real en el backend que computa conteos, sumas, promedios, máximos, mínimos, filtros de fechas y gráficos directamente sobre los registros.\n"
+                + "- Si en el contexto se incluye un 'CÁLCULO EXACTO Y VERIFICADO POR EL SERVIDOR', USA ESOS NÚMEROS EXACTOS como la verdad matemática absoluta. Explica las conclusiones con claridad ejecutiva.\n"
+                + "- Cuando el usuario pida un gráfico ('crear gráfico', 'grafica...', 'muéstrame un gráfico de...'), el sistema ya genera automáticamente el widget interactivo. Confírmale al usuario que el gráfico ha sido generado y preséntale un análisis breve de las tendencias y valores más altos observados.\n"
                 + "- NEXA INSIGHTS cuenta con motores nativos en el servidor para generar y descargar informes PDF oficiales (ejecutivos, de auditoría de cambios y técnicos) y libros Excel (.xlsx).\n"
-                + "- Cuando el usuario te pida generar, crear o descargar un PDF o un Excel, o te pida un informe sobre los cambios, las horas o los costos, CONFÍRMALE cordialmente que el documento oficial ha sido generado con los datos actuales y dile que use el botón verde 'Descargar Archivo Oficial' que aparece en la tarjeta justo debajo de tu mensaje.\n"
-                + "- REGLA CRÍTICA DE ENLACES: NUNCA escribas enlaces falsos ni enlaces Markdown como '[Descargar PDF](...)' o '[Descargar](...)' en el texto de tu respuesta. No inventes URLs en tu texto. El sistema adjunta automáticamente el botón de descarga real y seguro en la tarjeta verde inferior.\n"
-                + "- NUNCA digas que no puedes generar archivos o que solo manejas texto. NEXA INSIGHTS genera el PDF y el Excel reales de forma automática en el backend.\n"
+                + "- Cuando el usuario te pida generar, crear o descargar un PDF o un Excel, CONFÍRMALE cordialmente que el documento oficial ha sido generado y dile que use el botón verde 'Descargar Archivo Oficial' en la tarjeta inferior.\n"
+                + "- REGLA CRÍTICA DE ENLACES: NUNCA escribas enlaces falsos ni enlaces Markdown como '[Descargar PDF](...)' o '[Descargar](...)' en el texto de tu respuesta. El sistema adjunta automáticamente el botón de descarga real y seguro en la tarjeta verde inferior.\n"
+                + "- NUNCA digas que no puedes generar archivos o gráficos. NEXA INSIGHTS los crea de forma automática en el backend.\n"
                 + "\n"
                 + "Personalidad y Rol:\n"
-                + "- Eres una Inteligencia Artificial avanzada creada para analizar datos, responder consultas analíticas, generar resúmenes ejecutivos y ayudar a los usuarios a tomar decisiones con su información.\n"
-                + "- Si el usuario te saluda, te pregunta quién eres, si eres una IA, o te hace preguntas generales o sobre tus capacidades, responde de forma natural, cordial, elocuente y profesional como la IA de NEXA INSIGHTS.\n"
-                + "\n"
-                + "Reglas para Consultas sobre los Datos del Dataset:\n"
-                + "1. Cuando te pregunten sobre los datos (personas, horas, costos, auditorías, ventas, estados, fechas, números, etc.), básate en los datos reales provistos.\n"
-                + "2. Cita los números de fila originales de Excel donde encontraste la información.\n"
-                + "3. Si piden un resumen ejecutivo o análisis de cambios, presenta los hallazgos principales de forma concisa y profesional en español.";
+                + "- Eres una Inteligencia Artificial analítica y ejecutiva. Responde en español con tono profesional, citas de filas reales y cifras claras.";
 
         String userPromptContent = "INFORMACIÓN DEL DATASET ACTIVO:\n" + schemaSummary.toString()
-                + "\nEVIDENCIA Y REGISTROS ENCONTRADOS EN BASE DE DATOS:\n" + evidenceContext.toString()
+                + "\nEVIDENCIA Y CÁLCULOS REALES ENCONTRADOS EN BASE DE DATOS:\n" + evidenceContext.toString()
                 + "\nMENSAJE DEL USUARIO:\n" + userQuery;
 
-        // 5. Llamada a la API de Groq
+        // 6. Llamada a la API de Groq
         String aiTextResponse = callGroqApi(systemPrompt, userPromptContent);
 
-        // 6. Detección de intenciones operativas reales (Generación de PDF, Excel, Navegación)
+        // 7. Detección de intenciones operativas reales (Generación de PDF, Excel, Gráficos, Navegación)
         String actionType = null;
         String actionTitle = null;
         String downloadUrl = null;
         String actionDescription = null;
 
         String lowerQuery = userQuery.toLowerCase();
-        if (lowerQuery.contains("pdf") || lowerQuery.contains("informe") || lowerQuery.contains("reporte")) {
+        if (generatedChart != null) {
+            actionType = "CHART_CREATED";
+            actionTitle = "📈 " + generatedChart.getTitle();
+            downloadUrl = "/dashboard/" + dataset.getId();
+            actionDescription = "Gráfico generado dinámicamente con agregación " + generatedChart.getAggregation() + " sobre " + generatedChart.getDimensionName() + ".";
+        } else if (lowerQuery.contains("pdf") || lowerQuery.contains("informe") || lowerQuery.contains("reporte")) {
             String reportType = "executive";
             if (lowerQuery.contains("cambio") || lowerQuery.contains("modificaci") || lowerQuery.contains("auditor") || lowerQuery.contains("trazabilidad")) {
                 reportType = "audit";
@@ -178,7 +189,7 @@ public class GroqAiAssistantService {
             actionDescription = "Explora coincidencias de claves y correlaciones entre conjuntos de datos.";
         }
 
-        // 7. Guardar en el historial de sesión (incluyendo datos de acción)
+        // 8. Guardar en el historial de sesión (incluyendo datos de acción)
         ChatSession.ChatMessage userMsg = new ChatSession.ChatMessage("user", userQuery);
         ChatSession.ChatMessage botMsg = new ChatSession.ChatMessage("assistant", aiTextResponse);
         botMsg.setSupportingRowNumbers(supportingRows);
@@ -202,8 +213,174 @@ public class GroqAiAssistantService {
         responseDto.setActionTitle(actionTitle);
         responseDto.setDownloadUrl(downloadUrl);
         responseDto.setActionDescription(actionDescription);
+        responseDto.setChartWidget(generatedChart);
+        responseDto.setActionPayload(analyticalInsights);
 
         return responseDto;
+    }
+
+    @Autowired
+    private DashboardGenerationService dashboardGenerationService;
+
+    /**
+     * Motor de Cálculo Analítico Determinista: realiza cálculos matemáticos reales,
+     * agrega, filtra por fechas y genera gráficos con datos 100% reales.
+     */
+    private Map<String, Object> executeDeterministicAnalysis(Dataset dataset, String userQuery) {
+        Map<String, Object> result = new HashMap<>();
+        StringBuilder summary = new StringBuilder();
+        String lq = userQuery.toLowerCase();
+
+        List<DataRecord> records = dataRecordRepository.findByDatasetId(dataset.getId());
+        if (records == null || records.isEmpty()) {
+            return result;
+        }
+
+        // 1. Detección de creación de Gráficos desde el chat
+        boolean isChartRequest = lq.contains("gráfico") || lq.contains("grafico") || lq.contains("grafica")
+                || lq.contains("diagrama") || lq.contains("visualiza") || lq.contains("plot");
+
+        if (isChartRequest) {
+            // Encontrar la mejor columna de dimensión
+            ColumnDefinition targetDim = null;
+            for (ColumnDefinition c : dataset.getColumns()) {
+                if (lq.contains(c.getOriginalName().toLowerCase()) || lq.contains(c.getKey().toLowerCase())) {
+                    targetDim = c;
+                    break;
+                }
+            }
+            if (targetDim == null) {
+                // Fallback a primera columna categórica o de texto
+                for (ColumnDefinition c : dataset.getColumns()) {
+                    if (c.isCategorical() || c.getEffectiveType() == com.nexainsights.model.DataType.TEXT) {
+                        targetDim = c;
+                        break;
+                    }
+                }
+            }
+            if (targetDim == null && !dataset.getColumns().isEmpty()) {
+                targetDim = dataset.getColumns().get(0);
+            }
+
+            if (targetDim != null) {
+                // Determinar tipo de gráfico sugerido
+                String chartType = "bar";
+                if (lq.contains("torta") || lq.contains("circular") || lq.contains("pastel") || lq.contains("proporci")) {
+                    chartType = "pie";
+                } else if (lq.contains("rosca") || lq.contains("donut") || lq.contains("doughnut")) {
+                    chartType = "doughnut";
+                } else if (lq.contains("línea") || lq.contains("linea") || lq.contains("tendencia") || lq.contains("evolución") || lq.contains("evolucion") || lq.contains("mes")) {
+                    chartType = "line";
+                } else if (lq.contains("ranking") || lq.contains("top") || lq.contains("horizontal")) {
+                    chartType = "ranking";
+                }
+
+                // Determinar agregación
+                String aggregation = "COUNT";
+                String metricKey = null;
+                if (lq.contains("suma") || lq.contains("total")) aggregation = "SUM";
+                else if (lq.contains("promedio") || lq.contains("media")) aggregation = "AVG";
+                else if (lq.contains("máximo") || lq.contains("maximo") || lq.contains("mayor")) aggregation = "MAX";
+                else if (lq.contains("mínimo") || lq.contains("minimo") || lq.contains("menor")) aggregation = "MIN";
+
+                // Si no es COUNT, buscar columna numérica
+                if (!"COUNT".equals(aggregation)) {
+                    for (ColumnDefinition c : dataset.getColumns()) {
+                        if (c.isNumeric() && (lq.contains(c.getOriginalName().toLowerCase()) || lq.contains(c.getKey().toLowerCase()))) {
+                            metricKey = c.getKey();
+                            break;
+                        }
+                    }
+                    if (metricKey == null) {
+                        for (ColumnDefinition c : dataset.getColumns()) {
+                            if (c.isNumeric()) {
+                                metricKey = c.getKey();
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                com.nexainsights.dto.CustomChartRequestDto chartDto = new com.nexainsights.dto.CustomChartRequestDto();
+                chartDto.setDatasetId(dataset.getId());
+                chartDto.setTitle("Distribución de " + targetDim.getOriginalName() + (metricKey != null ? " (" + aggregation + ")" : ""));
+                chartDto.setDimensionKey(targetDim.getKey());
+                chartDto.setType(chartType);
+                chartDto.setAggregation(aggregation);
+                chartDto.setMetricKey(metricKey);
+
+                try {
+                    com.nexainsights.model.DashboardConfig.ChartWidget widget = dashboardGenerationService.addCustomChart(chartDto, dataset);
+                    result.put("generatedChart", widget);
+                    summary.append("CÁLCULO EXACTO Y VERIFICADO POR EL SERVIDOR (GRÁFICO GENERADO):\n")
+                           .append("- Gráfico creado: '").append(widget.getTitle()).append("'\n")
+                           .append("- Dimensión: ").append(targetDim.getOriginalName()).append("\n")
+                           .append("- Tipo: ").append(chartType).append("\n")
+                           .append("- Categorías calculadas: ").append(widget.getCategories()).append("\n")
+                           .append("- Valores reales computados: ").append(widget.getSeriesData()).append("\n");
+                } catch (Exception e) {
+                    log.warn("No se pudo autogenerar el gráfico: {}", e.getMessage());
+                }
+            }
+        }
+
+        // 2. Cálculos Numéricos Explícitos (Suma, Promedio, Máximo, Mínimo)
+        for (ColumnDefinition col : dataset.getColumns()) {
+            if (col.isNumeric() && (lq.contains(col.getOriginalName().toLowerCase()) || lq.contains(col.getKey().toLowerCase()))) {
+                List<Double> numVals = new ArrayList<>();
+                for (DataRecord r : records) {
+                    Object val = r.getValue(col.getKey());
+                    if (val != null) {
+                        try {
+                            String clean = val.toString().replaceAll("[^0-9.-]", "");
+                            if (!clean.isEmpty()) numVals.add(Double.parseDouble(clean));
+                        } catch (Exception ignored) {}
+                    }
+                }
+                if (!numVals.isEmpty()) {
+                    double sum = numVals.stream().mapToDouble(Double::doubleValue).sum();
+                    double avg = numVals.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+                    double max = numVals.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+                    double min = numVals.stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
+
+                    summary.append("CÁLCULO EXACTO Y VERIFICADO POR EL SERVIDOR (COLUMNA NUMÉRICA '").append(col.getOriginalName()).append("'):\n")
+                           .append("- Total registros con valor numérico: ").append(numVals.size()).append("\n")
+                           .append("- Suma total calculada: ").append(Math.round(sum * 100.0) / 100.0).append("\n")
+                           .append("- Promedio calculado: ").append(Math.round(avg * 100.0) / 100.0).append("\n")
+                           .append("- Valor máximo: ").append(max).append("\n")
+                           .append("- Valor mínimo: ").append(min).append("\n");
+                }
+            }
+        }
+
+        // 3. Conteo de Estados o Categorías más repetidas
+        if (lq.contains("más se repite") || lq.contains("mas se repite") || lq.contains("frecuente") || lq.contains("ranking") || lq.contains("mayor cantidad")) {
+            for (ColumnDefinition col : dataset.getColumns()) {
+                if (col.isCategorical() && col.getCategoryFrequencies() != null && !col.getCategoryFrequencies().isEmpty()) {
+                    summary.append("FRECUENCIAS REALES VERIFICADAS ('").append(col.getOriginalName()).append("'):\n");
+                    col.getCategoryFrequencies().entrySet().stream()
+                            .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
+                            .limit(5)
+                            .forEach(e -> summary.append("- ").append(e.getKey()).append(": ").append(e.getValue()).append(" registros\n"));
+                }
+            }
+        }
+
+        // 4. Detección de duplicados o registros vacíos
+        if (lq.contains("duplicad") || lq.contains("incomplet") || lq.contains("vacío") || lq.contains("vacio")) {
+            long emptyRows = records.stream().filter(r -> {
+                for (ColumnDefinition col : dataset.getColumns()) {
+                    Object v = r.getValue(col.getKey());
+                    if (v == null || v.toString().trim().isEmpty()) return true;
+                }
+                return false;
+            }).count();
+            summary.append("AUDITORÍA DE INTEGRIDAD REAL:\n")
+                   .append("- Total de filas con al menos un campo vacío: ").append(emptyRows).append(" de ").append(records.size()).append(" registros.\n");
+        }
+
+        result.put("contextSummary", summary.toString());
+        return result;
     }
 
     /**
