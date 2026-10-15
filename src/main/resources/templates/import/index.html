@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Importación Universal — NEXA INSIGHTS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar-left">
+            <div class="brand-section">
+                <div class="brand-logo-img">N</div>
+                <div>
+                    <div class="brand-name">NEXA INSIGHTS</div>
+                    <div class="brand-motto">Datos que generan decisiones</div>
+                </div>
+            </div>
+
+            <ul class="nav-list">
+                <li><a th:href="@{/}" class="nav-item-link"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span>Inicio</span></a></li>
+                <li><a th:href="@{/import}" class="nav-item-link active"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><span>Importar Datos</span></a></li>
+                <li><a th:href="@{/dashboard}" class="nav-item-link"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg><span>Dashboards</span></a></li>
+                <li><a th:href="@{/explorer}" class="nav-item-link"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><span>Explorador de Datos</span></a></li>
+                <li><a th:href="@{/relationships}" class="nav-item-link"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg><span>Relaciones entre Datasets</span></a></li>
+                <li><a th:href="@{/assistant}" class="nav-item-link"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg><span>Asistente IA</span></a></li>
+                <li><a th:href="@{/reports}" class="nav-item-link"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg><span>Reportes y Exportación</span></a></li>
+            </ul>
+
+            <div class="sidebar-promo-card">
+                <h4>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    Convierte tus datos
+                </h4>
+                <div style="font-weight: 700; color: #202B2A; margin-bottom: 3px;">en decisiones inteligentes</div>
+                <p style="color: var(--text-secondary); line-height: 1.35;">NEXA INSIGHTS te ayuda a explorar, analizar y descubrir el verdadero valor de tu información.</p>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="center-workspace" style="width: calc(100% - 230px); margin-left: 230px; padding: 24px 32px;">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Centro de Importación Universal</h1>
+                    <p class="page-subtitle">Sube tu archivo Excel (.xlsx, .xls) o CSV con cualquier estructura de columnas. El sistema descubrirá el esquema automáticamente.</p>
+                </div>
+            </div>
+
+            <!-- Paso 1: Zona de Arrastrar y Soltar -->
+            <div class="card" id="uploadStepCard">
+                <form id="uploadForm">
+                    <div class="dropzone" id="dropArea">
+                        <div style="font-size: 40px; margin-bottom: 12px; color: var(--brand-dark);">📊</div>
+                        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Arrastra y suelta tu archivo aquí</h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                            Compatible con <strong>.XLSX, .XLS, .CSV</strong> (sin importar qué columnas contenga).
+                        </p>
+                        <input type="file" id="fileInput" name="file" accept=".xlsx,.xls,.csv" style="display: none;">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                            Seleccionar Archivo
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 16px; align-items: center;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 6px;">Proyecto de Destino</label>
+                            <select id="projectSelect" class="chat-input" style="width: 100%; background: #ffffff;">
+                                <option th:each="p : ${projects}" th:value="${p.id}" th:text="${p.name}"></option>
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 6px;">Nombre Personalizado (Opcional)</label>
+                            <input type="text" id="datasetNameInput" class="chat-input" placeholder="Ej: Programa de Auditorías Internas">
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Paso 2: Vista Previa y Detección de Esquema (Se activa al subir archivo) -->
+            <div class="card" id="previewCard" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div>
+                        <h2 style="font-size: 18px; font-weight: 700; color: var(--text-primary);">Vista Previa del Esquema Detectado</h2>
+                        <p style="font-size: 13px; color: var(--text-secondary);" id="fileStatsSummary">Inspeccionando archivo...</p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" class="btn btn-secondary" onclick="resetUpload()">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="confirmImportBtn" onclick="confirmImport()">
+                            Confirmar e Importar a MongoDB
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Opciones de Hoja y Encabezado -->
+                <div style="display: flex; gap: 16px; margin-bottom: 20px; background: #F8F8F6; padding: 16px; border-radius: var(--radius-sm);">
+                    <div id="sheetSelectContainer" style="display: none;">
+                        <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">Hoja a importar:</label>
+                        <select id="sheetSelect" class="chat-input" style="padding: 6px 12px; background: #fff;" onchange="reloadPreview()"></select>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">Fila de Encabezados (0 = primera):</label>
+                        <input type="number" id="headerRowInput" value="0" min="0" max="20" class="chat-input" style="padding: 6px 12px; width: 100px; background: #fff;" onchange="reloadPreview()">
+                    </div>
+                </div>
+
+                <!-- Columnas y Tipos Inferidos -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">Columnas Identificadas y Tipos Inferidos:</h3>
+                    <div id="columnsPills" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                </div>
+
+                <!-- Muestra de Datos -->
+                <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">Primeras 10 filas del archivo:</h3>
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="data-table" id="previewTable">
+                        <thead id="previewTableHead"></thead>
+                        <tbody id="previewTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Indicador de Carga / Progreso -->
+            <div id="loadingOverlay" style="display: none; text-align: center; padding: 40px;">
+                <div style="font-size: 32px; margin-bottom: 12px;">⏳</div>
+                <h3 style="font-size: 16px; font-weight: 600;">Procesando e indexando registros en MongoDB...</h3>
+                <p style="font-size: 13px; color: var(--text-secondary);">Generando perfilado estadístico y construyendo dashboard dinámico.</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentFile = null;
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropArea.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropArea.classList.remove('dragover');
+            }, false);
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                handleFileSelected(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelected(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelected(file) {
+            currentFile = file;
+            requestPreview();
+        }
+
+        function reloadPreview() {
+            if (currentFile) requestPreview();
+        }
+
+        function requestPreview() {
+            if (!currentFile) return;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            const sheetSelect = document.getElementById('sheetSelect');
+            if (sheetSelect && sheetSelect.value) {
+                formData.append('sheet', sheetSelect.value);
+            }
+
+            const headerRow = document.getElementById('headerRowInput').value;
+            formData.append('headerRow', headerRow || 0);
+
+            document.getElementById('loadingOverlay').style.display = 'block';
+
+            fetch('/import/preview', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => {
+                if (!res.ok) return res.text().then(t => { throw new Error(t); });
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                renderPreview(data);
+            })
+            .catch(err => {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                alert('Error al analizar archivo: ' + err.message);
+            });
+        }
+
+        function renderPreview(data) {
+            document.getElementById('previewCard').style.display = 'block';
+            document.getElementById('fileStatsSummary').textContent = 
+                `${data.fileName} (${(data.fileSize / 1024).toFixed(1)} KB) — Formato: ${data.format} — Aprox. ${data.estimatedTotalRows} filas detectadas`;
+
+            // Selector de hojas si aplica
+            const sheetSelectContainer = document.getElementById('sheetSelectContainer');
+            const sheetSelect = document.getElementById('sheetSelect');
+            if (data.availableSheets && data.availableSheets.length > 1) {
+                sheetSelectContainer.style.display = 'block';
+                sheetSelect.innerHTML = '';
+                data.availableSheets.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s;
+                    if (s === data.selectedSheet) opt.selected = true;
+                    sheetSelect.appendChild(opt);
+                });
+            } else {
+                sheetSelectContainer.style.display = 'none';
+            }
+
+            // Píldoras de columnas y tipos inferidos
+            const pills = document.getElementById('columnsPills');
+            pills.innerHTML = '';
+            data.originalHeaders.forEach((h, idx) => {
+                const type = data.detectedTypes[idx] || 'TEXT';
+                const pill = document.createElement('div');
+                pill.style.cssText = 'padding: 4px 10px; background: #E7F3EC; border-radius: 4px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;';
+                pill.innerHTML = `<strong>${h}</strong> <span style="font-size: 10px; color: #245C4F; background: #fff; padding: 1px 6px; border-radius: 3px;">${type}</span>`;
+                pills.appendChild(pill);
+            });
+
+            // Tabla de datos
+            const thead = document.getElementById('previewTableHead');
+            thead.innerHTML = '';
+            const trHead = document.createElement('tr');
+            data.originalHeaders.forEach(h => {
+                const th = document.createElement('th');
+                th.textContent = h;
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+
+            const tbody = document.getElementById('previewTableBody');
+            tbody.innerHTML = '';
+            data.previewRows.forEach(row => {
+                const tr = document.createElement('tr');
+                data.originalHeaders.forEach(h => {
+                    const td = document.createElement('td');
+                    td.textContent = row[h] !== undefined ? row[h] : '';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        function confirmImport() {
+            if (!currentFile) return;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            formData.append('projectId', document.getElementById('projectSelect').value);
+            formData.append('datasetName', document.getElementById('datasetNameInput').value);
+
+            const sheetSelect = document.getElementById('sheetSelect');
+            if (sheetSelect && sheetSelect.value) {
+                formData.append('sheet', sheetSelect.value);
+            }
+            formData.append('headerRow', document.getElementById('headerRowInput').value || 0);
+
+            document.getElementById('loadingOverlay').style.display = 'block';
+            document.getElementById('confirmImportBtn').disabled = true;
+
+            fetch('/import/confirm', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => {
+                if (!res.ok) return res.text().then(t => { throw new Error(t); });
+                return res.json();
+            })
+            .then(dataset => {
+                // Redirigir de inmediato al nuevo dashboard generado
+                window.location.href = '/dashboard/' + dataset.id;
+            })
+            .catch(err => {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                document.getElementById('confirmImportBtn').disabled = false;
+                alert('Error durante la importación: ' + err.message);
+            });
+        }
+
+        function resetUpload() {
+            currentFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('previewCard').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

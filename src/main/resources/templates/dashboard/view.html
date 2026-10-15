@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${dataset.name} + ' — NEXA INSIGHTS'">Dashboard — NEXA INSIGHTS</title>
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <!-- Apache ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+
+        <!-- 1. BARRA LATERAL IZQUIERDA (230px) -->
+        <aside class="sidebar-left">
+            <div class="brand-section">
+                <div class="brand-logo-img">N</div>
+                <div>
+                    <div class="brand-name">NEXA INSIGHTS</div>
+                    <div class="brand-motto">Datos que generan decisiones</div>
+                </div>
+            </div>
+
+            <ul class="nav-list">
+                <li>
+                    <a th:href="@{'/dashboard/' + ${dataset.id}}" class="nav-item-link active">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/import}" class="nav-item-link">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <span>Importar Datos</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{'/explorer?datasetId=' + ${dataset.id}}" class="nav-item-link">
+                        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <span>Explorador de Datos</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/explorer}" class="nav-item-link">
+                        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                        <span>Análisis Avanzado</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/relationships}" class="nav-item-link">
+                        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                        <span>Relaciones entre Datasets</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{'/assistant?datasetId=' + ${dataset.id}}" class="nav-item-link">
+                        <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                        <span>Asistente IA</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{'/reports?datasetId=' + ${dataset.id}}" class="nav-item-link">
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <span>Reportes y Exportación</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="javascript:void(0)" onclick="openNewChartModal()" class="nav-item-link">
+                        <svg viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        <span>Dashboards Personalizados</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/}" class="nav-item-link">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        <span>Configuración</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-promo-card">
+                <h4>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    Convierte tus datos
+                </h4>
+                <div style="font-weight: 700; color: #202B2A; margin-bottom: 3px;">en decisiones inteligentes</div>
+                <p style="color: var(--text-secondary); line-height: 1.35;">NEXA INSIGHTS te ayuda a explorar, analizar y descubrir el verdadero valor de tu información.</p>
+            </div>
+        </aside>
+
+        <!-- 2. ÁREA CENTRAL: DASHBOARD Y DATOS -->
+        <main class="center-workspace">
+
+            <!-- Barra Superior con Buscador Global y Perfil -->
+            <header class="topbar">
+                <div class="search-box">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" class="search-input" placeholder="Buscar en todos los datos... (ej. auditor, proceso, fecha, etc.)"
+                           th:data-dataset-id="${dataset.id}"
+                           onkeypress="if(event.key === 'Enter') window.location.href='/explorer?datasetId=' + this.getAttribute('data-dataset-id') + '&search=' + encodeURIComponent(this.value)">
+                </div>
+
+                <div class="topbar-right">
+                    <button class="btn-header" style="border:none; padding: 4px;" title="Notificaciones">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    </button>
+                    <button class="btn-header" style="border:none; padding: 4px;" title="Preferencias">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    </button>
+                    <div class="user-profile">
+                        <div class="user-avatar">LC</div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 11px; line-height: 1.1;">Luis Cárdenas</div>
+                            <div style="font-size: 10px; color: var(--text-secondary);">Analista de Datos</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Encabezado del Dashboard: Breadcrumb y Acciones -->
+            <div class="breadcrumb-row">
+                <span>Dashboard</span>
+                <span>›</span>
+                <span th:text="${dataset.originalFileName}">Programa_Auditorias.xlsx</span>
+            </div>
+
+            <div class="dataset-header-row">
+                <div class="dataset-identity">
+                    <div class="dataset-icon-badge">📊</div>
+                    <div class="dataset-title-block">
+                        <h1>
+                            <span th:text="${dataset.name}">Programa de Auditorías</span>
+                            <span class="status-tag completada" style="font-size: 11px;">Archivo importado</span>
+                        </h1>
+                        <div class="dataset-meta">
+                            Total de registros: <strong th:text="${dataset.totalRows}">24</strong> | 
+                            Última actualización: <span th:text="${#temporals.format(dataset.importedAt, 'dd MMM. yyyy - HH:mm')}">17 abr. 2025 - 14:32</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="header-action-buttons">
+                    <button type="button" class="btn-header" onclick="toggleSlicerPanel()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                        Filtros Interactivos
+                    </button>
+                    <div class="btn-header" style="cursor: default;" title="Ventana temporal activa">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <span id="dateRangeIndicator">Todo el período</span>
+                    </div>
+                    <a th:href="@{'/reports/export/xlsx/' + ${dataset.id}}" class="btn-header">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Exportar ▾
+                    </a>
+                    <button type="button" class="btn-header btn-save" onclick="openNewChartModal()">
+                        + Nuevo Gráfico
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel Desplegable de Filtros (Slicers tipo Power BI) -->
+            <div id="slicerPanel" class="slicer-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                    <div style="font-weight: 700; font-size: 13px; color: var(--brand-dark); display: flex; align-items: center; gap: 6px;">
+                        <span>⚙️</span> Segmentadores y Filtros en Vivo (Slicers)
+                    </div>
+                    <button type="button" onclick="toggleSlicerPanel()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-secondary);">✕</button>
+                </div>
+                <div class="slicer-grid">
+                    <div>
+                        <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">Filtrar por Columna:</label>
+                        <select id="slicerColumnSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 4px; background: #fff; width: 100%;" onchange="populateSlicerValues()">
+                            <option value="">-- Seleccionar Campo --</option>
+                            <option th:each="col : ${dataset.columns}" th:value="${col.key}" th:text="${col.originalName}"></option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">Valor específico:</label>
+                        <select id="slicerValueSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 4px; background: #fff; width: 100%;">
+                            <option value="">-- Todos los valores --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">Búsqueda de texto:</label>
+                        <input type="text" id="slicerSearchInput" class="search-input" style="border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 4px; background: #fff; width: 100%;" placeholder="Texto o palabra clave...">
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-header btn-save" style="flex: 1; justify-content: center;" onclick="applySlicerFilter()">Aplicar Filtro</button>
+                        <button type="button" class="btn-header" style="flex: 1; justify-content: center;" onclick="clearAllCrossFilters()">Limpiar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barra de Filtros Activos Interactivas (Cross-Filtering Power BI) -->
+            <div id="activeFiltersBar" class="active-filters-bar">
+                <span style="font-weight: 700; color: var(--brand-dark); display: flex; align-items: center; gap: 4px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                    Filtros activos:
+                </span>
+                <div id="filterChipsContainer" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+                <button type="button" class="btn-clear-all-filters" onclick="clearAllCrossFilters()">Restablecer todo</button>
+            </div>
+
+            <!-- Fila de 5 Tarjetas KPI Compactas -->
+            <div class="kpi-row-5">
+                <div class="kpi-box" th:each="kpi : ${dashboard.kpis}">
+                    <div class="kpi-icon-circle" th:style="'background:' + ${kpi.iconBgColor} + '; color:' + ${kpi.iconColor}">
+                        <svg th:if="${kpi.icon == 'calculator'}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M16 10h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M12 14h.01"></path><path d="M8 14h.01"></path><path d="M12 18h.01"></path><path d="M8 18h.01"></path></svg>
+                        <svg th:if="${kpi.icon == 'play'}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <svg th:if="${kpi.icon == 'check'}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg th:if="${kpi.icon == 'clock'}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <svg th:if="${kpi.icon == 'star'}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-label" th:text="${kpi.title}">Total de Auditorías</div>
+                        <div class="kpi-number" th:id="'kpi_val_' + ${kpi.id}" th:text="${kpi.value}">24</div>
+                        <div class="kpi-foot" th:style="'color:' + (${kpi.subtextColor != null} ? ${kpi.subtextColor} : 'var(--text-secondary)')" th:text="${kpi.subtitle}">↑ 12% vs. periodo anterior</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grilla de Gráficos Interactivos Estilo Power BI -->
+            <div class="charts-grid-3">
+                <div class="chart-card-box" th:each="chart : ${dashboard.charts}">
+                    <div class="chart-card-head">
+                        <h3 th:text="${chart.title}" th:title="${chart.title}">Título del Gráfico</h3>
+                        <div class="chart-header-actions">
+                            <!-- Botones para alternar tipo de gráfico al vuelo usando data attributes -->
+                            <button type="button" class="btn-chart-tool" title="Cambiar a Barras" th:data-chart-id="${chart.id}" onclick="switchChartType(this.getAttribute('data-chart-id'), 'bar')">📊</button>
+                            <button type="button" class="btn-chart-tool" title="Cambiar a Dona / Pastel" th:data-chart-id="${chart.id}" onclick="switchChartType(this.getAttribute('data-chart-id'), 'doughnut')">🍩</button>
+                            <button type="button" class="btn-chart-tool" title="Cambiar a Línea Temporal" th:data-chart-id="${chart.id}" onclick="switchChartType(this.getAttribute('data-chart-id'), 'line')">📈</button>
+                            <button type="button" class="btn-chart-tool" title="Pantalla Completa / Drill-down" th:data-chart-id="${chart.id}" onclick="openDrillDownModal(this.getAttribute('data-chart-id'))">⛶</button>
+                        </div>
+                    </div>
+                    <div class="chart-render-area" th:id="'chart_' + ${chart.id}" title="Haz clic en cualquier barra o sector para filtrar en cruz todo el dashboard"></div>
+                </div>
+            </div>
+
+            <!-- Tablas de la Zona Inferior con Búsqueda en Vivo y Ordenamiento al Clic -->
+            <div class="bottom-tables-row">
+                <!-- Tabla 1: Últimos Registros -->
+                <div class="compact-table-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h3 style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>📋</span> Registros Dinámicos
+                        </h3>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="tableFilterInput" class="table-filter-search" placeholder="🔍 Filtrar tabla..." onkeyup="filterTableLive(this.value, 'recordsTableBody1')">
+                            <a th:href="@{'/explorer?datasetId=' + ${dataset.id}}" class="link-ver-detalle">Ver todos →</a>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto; max-height: 260px;">
+                        <table class="compact-table" id="interactiveTable1">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="sortTableLive(0, 'interactiveTable1')"># Fila ⇅</th>
+                                    <th class="sortable" th:each="col, iterStat : ${dataset.columns}" th:if="${iterStat.index < 5}" 
+                                        th:text="${col.originalName} + ' ⇅'" 
+                                        th:data-col-idx="${iterStat.index + 1}"
+                                        onclick="sortTableLive(parseInt(this.getAttribute('data-col-idx')), 'interactiveTable1')">Columna</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsTableBody1">
+                                <tr th:each="rec, iterStat : ${recentRecords}">
+                                    <td th:text="${rec.rowNumber}" style="font-weight: 700; color: var(--brand-dark);">1</td>
+                                    <td th:each="col, cStat : ${dataset.columns}" th:if="${cStat.index < 5}">
+                                        <span th:if="${#strings.containsIgnoreCase(col.originalName, 'estado')}" 
+                                              class="status-tag" 
+                                              th:classappend="${rec.getValue(col.key) != null && #strings.containsIgnoreCase(rec.getValue(col.key).toString(), 'complet') ? 'completada' : (rec.getValue(col.key) != null && (#strings.containsIgnoreCase(rec.getValue(col.key).toString(), 'ejecuc') || #strings.containsIgnoreCase(rec.getValue(col.key).toString(), 'confirma') || #strings.containsIgnoreCase(rec.getValue(col.key).toString(), 'proceso')) ? 'ejecucion' : 'programada')}"
+                                              th:text="${rec.getValue(col.key) != null ? rec.getValue(col.key) : '-'}">Estado</span>
+                                        <span th:unless="${#strings.containsIgnoreCase(col.originalName, 'estado')}" 
+                                              th:text="${rec.getValue(col.key) != null ? rec.getValue(col.key) : '-'}"
+                                              th:style="${cStat.index == 0} ? 'font-weight: 600;' : ''">Valor</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla 2: Vista de Datos y Desglose -->
+                <div class="compact-table-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h3 style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>📊</span> Desglose y Resumen
+                        </h3>
+                        <div style="font-size: 11px; color: var(--text-secondary);">
+                            Filas: <strong id="visibleRowsCounter" th:text="${recentRecords.size()}">0</strong> de <strong th:text="${dataset.totalRows}">0</strong>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto; max-height: 260px;">
+                        <table class="compact-table" id="interactiveTable2">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="sortTableLive(0, 'interactiveTable2')"># Fila ⇅</th>
+                                    <th class="sortable" th:each="col, iterStat : ${dataset.columns}" th:if="${iterStat.index >= 1 && iterStat.index <= 4}" 
+                                        th:text="${col.originalName} + ' ⇅'"
+                                        th:data-col-idx="${iterStat.index}"
+                                        onclick="sortTableLive(parseInt(this.getAttribute('data-col-idx')), 'interactiveTable2')">Columna</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsTableBody2">
+                                <tr th:each="rec, iterStat : ${recentRecords}">
+                                    <td th:text="${rec.rowNumber}" style="font-weight: 700; color: var(--brand-dark);">1</td>
+                                    <td th:each="col, cStat : ${dataset.columns}" th:if="${cStat.index >= 1 && cStat.index <= 4}">
+                                        <span th:if="${#strings.containsIgnoreCase(col.originalName, 'estado')}" 
+                                              class="status-tag" 
+                                              th:classappend="${rec.getValue(col.key) != null && #strings.containsIgnoreCase(rec.getValue(col.key).toString(), 'complet') ? 'completada' : (rec.getValue(col.key) != null && (#strings.containsIgnoreCase(rec.getValue(col.key).toString(), 'ejecuc') || #strings.containsIgnoreCase(rec.getValue(col.key).toString(), 'confirma')) ? 'ejecucion' : 'programada')}"
+                                              th:text="${rec.getValue(col.key) != null ? rec.getValue(col.key) : '-'}">Estado</span>
+                                        <span th:unless="${#strings.containsIgnoreCase(col.originalName, 'estado')}" 
+                                              th:text="${rec.getValue(col.key) != null ? rec.getValue(col.key) : '-'}">Valor</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Informativo -->
+            <footer style="margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary);">
+                <div><strong>NEXA INSIGHTS</strong> | Plataforma Inteligente de Análisis de Datos</div>
+                <div style="display: flex; gap: 14px;">
+                    <span>● Spring Boot 3</span>
+                    <span>● MongoDB</span>
+                    <span>● Groq AI</span>
+                    <span>● Apache ECharts</span>
+                </div>
+            </footer>
+        </main>
+
+        <!-- 3. PANEL LATERAL DERECHO: ASISTENTE GROQ AI (320px) -->
+        <aside class="sidebar-right-ai">
+            <div class="ai-panel-header">
+                <div class="ai-title-wrap">
+                    <div class="ai-icon-hex">🤖</div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 13px; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                            <span>Asistente IA</span>
+                            <span class="status-tag parcial" style="font-size: 9px; padding: 1px 5px;">Beta</span>
+                        </div>
+                        <div style="font-size: 10px; color: var(--text-secondary);">Preguntas fácticas y verificables</div>
+                    </div>
+                </div>
+                <button style="background: none; border: none; cursor: pointer; color: var(--text-secondary);" title="Reiniciar chat" onclick="resetChat()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                </button>
+            </div>
+
+            <!-- Cuerpo de Mensajes -->
+            <div class="ai-panel-body" id="aiPanelMessages">
+                <!-- Mensaje de usuario de muestra similar al diseño -->
+                <div class="ai-bubble-user">
+                    ¿Cuántas auditorías están programadas para los próximos 3 meses y quiénes son los responsables?
+                </div>
+
+                <!-- Respuesta enriquecida del asistente con acciones -->
+                <div class="ai-bubble-bot">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                        <span style="font-weight: 700; color: var(--brand-dark);">NEXA Insights</span>
+                        <span style="font-size: 10px; color: var(--text-secondary);">Hoy, 14:35</span>
+                    </div>
+                    <p>He encontrado <strong>4 auditorías programadas</strong> en el dataset:</p>
+                    <ol style="margin-left: 18px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+                        <li><strong>Auditoría de procesos operativos</strong><br><span style="color: var(--text-secondary);">- Responsable: Carlos Rodríguez (Fila 8)</span></li>
+                        <li><strong>Auditoría de tecnología</strong><br><span style="color: var(--text-secondary);">- Responsable: Luis Martínez (Fila 10)</span></li>
+                        <li><strong>Auditoría de talento humano</strong><br><span style="color: var(--text-secondary);">- Responsable: Ana López (Fila 12)</span></li>
+                        <li><strong>Auditoría de gestión documental</strong><br><span style="color: var(--text-secondary);">- Responsable: Juan Carlos Pérez (Fila 15)</span></li>
+                    </ol>
+
+                    <!-- Botones de Acción Contextual -->
+                    <div class="ai-action-btn-list">
+                        <a th:href="@{'/explorer?datasetId=' + ${dataset.id}}" class="ai-chip-btn">📋 Ver registros en la tabla</a>
+                        <button type="button" class="ai-chip-btn" onclick="openNewChartModal()">📈 Crear gráfico</button>
+                        <button type="button" class="ai-chip-btn" onclick="askQuickPrompt('Compara los periodos de ejecución')">⚖ Comparar periodos</button>
+                        <button type="button" class="ai-chip-btn" onclick="askQuickPrompt('Genera un resumen ejecutivo de las auditorías')">📄 Resumen ejecutivo</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pie con Input Bar y Sugerencias -->
+            <div class="ai-panel-foot">
+                <div class="ai-input-container">
+                    <input type="text" id="aiInput" class="ai-input-field" placeholder="Escribe tu pregunta..." onkeypress="if(event.key === 'Enter') sendAiMessage()">
+                    <button type="button" class="ai-btn-submit" onclick="sendAiMessage()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+
+                <div class="ai-quick-prompts">
+                    <button type="button" class="ai-quick-btn" onclick="askQuickPrompt('Muestra las auditorías por proceso')">
+                        ◎ Muestra las auditorías por proceso
+                    </button>
+                    <button type="button" class="ai-quick-btn" onclick="askQuickPrompt('¿Qué auditor tiene más asignaciones?')">
+                        ◎ ¿Qué auditor tiene más asignaciones?
+                    </button>
+                    <button type="button" class="ai-quick-btn" onclick="askQuickPrompt('Encuentra registros con información incompleta')">
+                        ◎ Encuentra registros con información incompleta
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modal Drill-down / Pantalla Completa de Gráficos -->
+    <div id="drillDownModal" class="drilldown-modal">
+        <div class="drilldown-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 id="drillDownTitle" style="font-size: 16px; font-weight: 700; color: var(--brand-dark);">Drill-down de Visualización</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn-chart-tool" onclick="exportDrillDownImage()">📷 Guardar Imagen</button>
+                    <button type="button" class="btn-chart-tool" onclick="closeDrillDownModal()" style="font-weight: 700; font-size: 14px;">✕</button>
+                </div>
+            </div>
+            <div id="drillDownRenderArea" style="flex: 1; width: 100%; min-height: 400px;"></div>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Gráfico -->
+    <div id="newChartModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="compact-table-card" style="width: 460px; max-width: 90%; margin: 0; padding: 24px;">
+            <h3 style="font-size: 16px; font-weight: 700; color: var(--brand-dark); margin-bottom: 6px;">Construir Nuevo Gráfico</h3>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">Configura un widget interactivo con los datos del dataset.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                    <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Título del Gráfico</label>
+                    <input type="text" id="chartTitleInput" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px;" placeholder="Ej: Distribución por Estado de Auditoría">
+                </div>
+
+                <div>
+                    <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Columna de Dimensión</label>
+                    <select id="chartDimensionSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; background:#fff;">
+                        <option th:each="col : ${dataset.columns}" th:value="${col.key}" th:text="${col.originalName} + ' (' + ${col.effectiveType} + ')'"></option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px;">Tipo de Visualización</label>
+                    <select id="chartTypeSelect" class="search-input" style="border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; background:#fff;">
+                        <option value="bar">Barras Verticales</option>
+                        <option value="ranking">Ranking Horizontal</option>
+                        <option value="doughnut">Rosca / Doughnut</option>
+                        <option value="line">Línea Temporal</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+                    <button type="button" class="btn-header" onclick="closeNewChartModal()">Cancelar</button>
+                    <button type="button" class="btn-header btn-save" onclick="submitNewChart()">Guardar Gráfico</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de ECharts sincronizados con la paleta de la imagen y Motor Power BI -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const originalChartsData = /*[[${dashboard.charts}]]*/ [];
+        const datasetId = /*[[${dataset.id}]]*/ '';
+        const projectId = /*[[${dataset.projectId}]]*/ '';
+        const rawColumns = /*[[${dataset.columns}]]*/ [];
+        const rawRecentRecords = /*[[${recentRecords}]]*/ [];
+
+        // Estado del motor de filtrado cruzado estilo Power BI
+        const activeCrossFilters = {};
+        const chartInstances = {};
+        let drillDownChartInstance = null;
+
+        // Paleta idéntica a la imagen de referencia
+        const colorPalette = ['#245C4F', '#D98745', '#176B5B', '#9973B4', '#F4BE5E', '#4B8876', '#E29F62', '#365314', '#0284c7'];
+
+        // Inicializar Gráficos ECharts con interactividad completa
+        function initCharts() {
+            originalChartsData.forEach(ch => {
+                const dom = document.getElementById('chart_' + ch.id);
+                if (!dom) return;
+
+                const myChart = echarts.init(dom);
+                chartInstances[ch.id] = { instance: myChart, meta: ch, currentType: ch.type };
+
+                renderSingleChart(ch.id, ch.type, ch.categories, ch.seriesData);
+
+                // CROSS-FILTERING POWER BI: Al hacer clic en un elemento del gráfico
+                myChart.on('click', function(params) {
+                    const categoryClicked = params.name || (params.data && params.data.name) || params.value;
+                    const dimKey = ch.dimensionKey || ch.title;
+                    applyCrossFilter(dimKey, categoryClicked, ch.dimensionName || ch.title);
+                });
+
+                window.addEventListener('resize', () => myChart.resize());
+            });
+        }
+
+        // Renderiza o actualiza un gráfico específico con un tipo visual
+        function renderSingleChart(chartId, type, categories, seriesData) {
+            const chartObj = chartInstances[chartId];
+            if (!chartObj) return;
+
+            const myChart = chartObj.instance;
+            let option = {};
+
+            if (type === 'doughnut' || type === 'pie') {
+                const pieData = (categories || []).map((c, idx) => ({
+                    name: c,
+                    value: seriesData[idx]
+                }));
+
+                option = {
+                    color: colorPalette,
+                    tooltip: { trigger: 'item', formatter: '{b}: <strong>{c}</strong> ({d}%)' },
+                    legend: { orient: 'horizontal', bottom: '0', textStyle: { fontSize: 10 } },
+                    series: [{
+                        type: 'pie',
+                        radius: ['45%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+                        label: { show: false },
+                        emphasis: { label: { show: true, fontSize: 12, fontWeight: 'bold' } },
+                        data: pieData
+                    }]
+                };
+            } else if (type === 'ranking') {
+                option = {
+                    color: ['#176B5B'],
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    grid: { left: '3%', right: '8%', bottom: '3%', top: '5%', containLabel: true },
+                    xAxis: { type: 'value', splitLine: { show: false } },
+                    yAxis: { type: 'category', data: categories, inverse: true, axisTick: { show: false }, axisLine: { show: false } },
+                    series: [{
+                        type: 'bar',
+                        data: seriesData,
+                        barWidth: 10,
+                        itemStyle: { borderRadius: [0, 6, 6, 0] },
+                        label: { show: true, position: 'right', fontSize: 11, fontWeight: 'bold' }
+                    }]
+                };
+            } else if (type === 'line') {
+                option = {
+                    color: ['#176B5B'],
+                    tooltip: { trigger: 'axis' },
+                    grid: { left: '3%', right: '4%', bottom: '10%', top: '10%', containLabel: true },
+                    xAxis: { type: 'category', data: categories, axisLine: { lineStyle: { color: '#E7EBE8' } } },
+                    yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F2EF' } } },
+                    series: [{
+                        data: seriesData,
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 6,
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(23, 107, 91, 0.25)' },
+                                { offset: 1, color: 'rgba(23, 107, 91, 0.01)' }
+                            ])
+                        }
+                    }]
+                };
+            } else {
+                option = {
+                    color: colorPalette,
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+                    xAxis: {
+                        type: 'category',
+                        data: categories,
+                        axisLabel: { interval: 0, rotate: categories && categories.length > 5 ? 20 : 0, fontSize: 10 }
+                    },
+                    yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F0F2EF' } } },
+                    series: [{
+                        data: (seriesData || []).map((val, idx) => ({
+                            value: val,
+                            itemStyle: { color: colorPalette[idx % colorPalette.length], borderRadius: [4, 4, 0, 0] }
+                        })),
+                        type: 'bar',
+                        barWidth: 24
+                    }]
+                };
+            }
+
+            myChart.setOption(option, true);
+        }
+
+        // Alternar visualización de un gráfico en vivo (Power BI quick switcher)
+        function switchChartType(chartId, newType) {
+            const chartObj = chartInstances[chartId];
+            if (!chartObj) return;
+            chartObj.currentType = newType;
+            renderSingleChart(chartId, newType, chartObj.meta.categories, chartObj.meta.seriesData);
+        }
+
+        // Aplicar Cross-Filtering al tocar cualquier elemento
+        function applyCrossFilter(dimKey, value, labelName) {
+            if (!dimKey || !value) return;
+
+            // Toggle o reemplazo
+            activeCrossFilters[dimKey] = { value: String(value), label: labelName || dimKey };
+            updateActiveFiltersUI();
+            recalculateDashboardByFilter();
+        }
+
+        // Remover un filtro activo
+        function removeCrossFilter(dimKey) {
+            delete activeCrossFilters[dimKey];
+            updateActiveFiltersUI();
+            recalculateDashboardByFilter();
+        }
+
+        // Limpiar todos los filtros en cruz
+        function clearAllCrossFilters() {
+            for (let k in activeCrossFilters) delete activeCrossFilters[k];
+            updateActiveFiltersUI();
+            recalculateDashboardByFilter();
+        }
+
+        // Actualizar barra de chips de filtros activos
+        function updateActiveFiltersUI() {
+            const bar = document.getElementById('activeFiltersBar');
+            const container = document.getElementById('filterChipsContainer');
+            const keys = Object.keys(activeCrossFilters);
+
+            if (keys.length === 0) {
+                bar.classList.remove('active');
+                container.innerHTML = '';
+                return;
+            }
+
+            bar.classList.add('active');
+            container.innerHTML = keys.map(k => {
+                const item = activeCrossFilters[k];
+                return `
+                    <div class="filter-chip-tag">
+                        <span>${item.label}: <strong>${item.value}</strong></span>
+                        <span class="filter-chip-remove" onclick="removeCrossFilter('${k}')" title="Quitar filtro">✕</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Recalcular métricas, tablas y gráficos según los filtros activos
+        function recalculateDashboardByFilter() {
+            const keys = Object.keys(activeCrossFilters);
+            const table1Rows = document.querySelectorAll('#recordsTableBody1 tr');
+            const table2Rows = document.querySelectorAll('#recordsTableBody2 tr');
+            let visibleCount = 0;
+
+            // Filtrar registros en las tablas cliente
+            table1Rows.forEach((row, idx) => {
+                let match = true;
+                const rec = rawRecentRecords[idx];
+                if (rec && rec.data) {
+                    for (let k of keys) {
+                        const targetVal = String(activeCrossFilters[k].value).toLowerCase();
+                        const recordVal = String(rec.data[k] || '').toLowerCase();
+                        if (!recordVal.includes(targetVal)) {
+                            match = false;
+                            break;
+                        }
+                    }
+                }
+                row.style.display = match ? '' : 'none';
+                if (match) visibleCount++;
+            });
+
+            table2Rows.forEach((row, idx) => {
+                let match = true;
+                const rec = rawRecentRecords[idx];
+                if (rec && rec.data) {
+                    for (let k of keys) {
+                        const targetVal = String(activeCrossFilters[k].value).toLowerCase();
+                        const recordVal = String(rec.data[k] || '').toLowerCase();
+                        if (!recordVal.includes(targetVal)) {
+                            match = false;
+                            break;
+                        }
+                    }
+                }
+                row.style.display = match ? '' : 'none';
+            });
+
+            // Actualizar contador visible
+            const counter = document.getElementById('visibleRowsCounter');
+            if (counter) counter.textContent = keys.length === 0 ? rawRecentRecords.length : visibleCount;
+
+            // Resaltar KPI si está filtrado
+            const kpiTotalEl = document.getElementById('kpi_val_kpi_total');
+            if (kpiTotalEl && keys.length > 0) {
+                kpiTotalEl.innerHTML = `<span style="color:var(--brand-dark)">${visibleCount}</span> <span style="font-size:12px; font-weight:normal; color:var(--text-secondary)">(filtrado)</span>`;
+            } else if (kpiTotalEl) {
+                kpiTotalEl.textContent = rawRecentRecords.length;
+            }
+        }
+
+        // Toggle del panel de Slicers
+        function toggleSlicerPanel() {
+            const panel = document.getElementById('slicerPanel');
+            panel.classList.toggle('open');
+        }
+
+        // Llenar valores dinámicos para el slicer seleccionado
+        function populateSlicerValues() {
+            const colKey = document.getElementById('slicerColumnSelect').value;
+            const valSelect = document.getElementById('slicerValueSelect');
+            valSelect.innerHTML = '<option value="">-- Todos los valores --</option>';
+
+            if (!colKey) return;
+
+            const uniqueVals = new Set();
+            rawRecentRecords.forEach(r => {
+                if (r.data && r.data[colKey] !== undefined && r.data[colKey] !== null) {
+                    uniqueVals.add(String(r.data[colKey]));
+                }
+            });
+
+            uniqueVals.forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                valSelect.appendChild(opt);
+            });
+        }
+
+        // Aplicar filtro desde el Slicer
+        function applySlicerFilter() {
+            const colKey = document.getElementById('slicerColumnSelect').value;
+            const val = document.getElementById('slicerValueSelect').value;
+            const textSearch = document.getElementById('slicerSearchInput').value.trim();
+
+            if (colKey && val) {
+                const colDef = rawColumns.find(c => c.key === colKey);
+                applyCrossFilter(colKey, val, colDef ? colDef.originalName : colKey);
+            } else if (textSearch) {
+                applyCrossFilter('search_keyword', textSearch, 'Texto');
+            }
+        }
+
+        // Modal Drill-down de Gráfico a Pantalla Completa
+        function openDrillDownModal(chartId) {
+            const chartObj = chartInstances[chartId];
+            if (!chartObj) return;
+
+            const modal = document.getElementById('drillDownModal');
+            document.getElementById('drillDownTitle').textContent = chartObj.meta.title + ' — Vista Interactiva';
+            modal.classList.add('open');
+
+            setTimeout(() => {
+                const dom = document.getElementById('drillDownRenderArea');
+                if (drillDownChartInstance) drillDownChartInstance.dispose();
+                drillDownChartInstance = echarts.init(dom);
+
+                // Configuración enriquecida para pantalla completa
+                const currentOpt = chartObj.instance.getOption();
+                drillDownChartInstance.setOption(currentOpt);
+                drillDownChartInstance.resize();
+            }, 100);
+        }
+
+        function closeDrillDownModal() {
+            document.getElementById('drillDownModal').classList.remove('open');
+            if (drillDownChartInstance) {
+                drillDownChartInstance.dispose();
+                drillDownChartInstance = null;
+            }
+        }
+
+        function exportDrillDownImage() {
+            if (!drillDownChartInstance) return;
+            const url = drillDownChartInstance.getDataURL({ pixelRatio: 2, backgroundColor: '#fff' });
+            const link = document.createElement('a');
+            link.download = 'grafico_nexa_insights.png';
+            link.href = url;
+            link.click();
+        }
+
+        // Búsqueda en vivo en la tabla de registros
+        function filterTableLive(query, bodyId) {
+            const term = query.toLowerCase();
+            const rows = document.querySelectorAll('#' + bodyId + ' tr');
+            rows.forEach(r => {
+                const text = r.textContent.toLowerCase();
+                r.style.display = text.includes(term) ? '' : 'none';
+            });
+        }
+
+        // Ordenamiento dinámico de tablas al hacer clic en los encabezados
+        let sortDirection = 1;
+        function sortTableLive(colIndex, tableId) {
+            const table = document.getElementById(tableId);
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            sortDirection = -sortDirection;
+
+            rows.sort((a, b) => {
+                const aVal = a.children[colIndex].textContent.trim();
+                const bVal = b.children[colIndex].textContent.trim();
+                const aNum = parseFloat(aVal.replace(/[^0-9.-]+/g, ""));
+                const bNum = parseFloat(bVal.replace(/[^0-9.-]+/g, ""));
+
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return (aNum - bNum) * sortDirection;
+                }
+                return aVal.localeCompare(bVal) * sortDirection;
+            });
+
+            rows.forEach(r => tbody.appendChild(r));
+        }
+
+        // Interacciones del Asistente Groq AI lateral derecho
+        function askQuickPrompt(text) {
+            document.getElementById('aiInput').value = text;
+            sendAiMessage();
+        }
+
+        function sendAiMessage() {
+            const input = document.getElementById('aiInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const panel = document.getElementById('aiPanelMessages');
+
+            // Burbuja de usuario
+            const userBubble = document.createElement('div');
+            userBubble.className = 'ai-bubble-user';
+            userBubble.textContent = message;
+            panel.appendChild(userBubble);
+            input.value = '';
+
+            // Burbuja cargando
+            const botBubble = document.createElement('div');
+            botBubble.className = 'ai-bubble-bot';
+            botBubble.innerHTML = `<em>Consultando base de datos y razonando con Groq AI...</em>`;
+            panel.appendChild(botBubble);
+            panel.scrollTop = panel.scrollHeight;
+
+            fetch('/assistant/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectId: projectId,
+                    datasetId: datasetId,
+                    message: message
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                let evidenceHtml = '';
+                if (data.supportingRows && data.supportingRows.length > 0) {
+                    evidenceHtml = `<div style="font-size:10px; color:#176B5B; margin-top:8px; font-weight:600;">✔ Filas de evidencia original: #${data.supportingRows.join(', #')}</div>`;
+                }
+
+                botBubble.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                        <span style="font-weight: 700; color: var(--brand-dark);">NEXA Insights</span>
+                        <span style="font-size: 10px; color: var(--text-secondary);">Recién</span>
+                    </div>
+                    <div>${data.response.replace(/\n/g, '<br>')}</div>
+                    ${evidenceHtml}
+                    <div class="ai-action-btn-list">
+                        <a href="/explorer?datasetId=${datasetId}" class="ai-chip-btn">📋 Ver registros en la tabla</a>
+                        <button type="button" class="ai-chip-btn" onclick="openNewChartModal()">📈 Crear gráfico</button>
+                    </div>
+                `;
+                panel.scrollTop = panel.scrollHeight;
+            })
+            .catch(err => {
+                botBubble.innerHTML = `<span style="color:var(--danger)">Error al procesar: ${err.message}</span>`;
+            });
+        }
+
+        function resetChat() {
+            const panel = document.getElementById('aiPanelMessages');
+            panel.innerHTML = `<div class="ai-bubble-bot">Conversación reiniciada. Puedes consultar cualquier aspecto de tus datos indexados.</div>`;
+        }
+
+        // Modal de nuevos gráficos
+        function openNewChartModal() { document.getElementById('newChartModal').style.display = 'flex'; }
+        function closeNewChartModal() { document.getElementById('newChartModal').style.display = 'none'; }
+        function submitNewChart() {
+            const title = document.getElementById('chartTitleInput').value;
+            const dimensionKey = document.getElementById('chartDimensionSelect').value;
+            const type = document.getElementById('chartTypeSelect').value;
+
+            fetch('/dashboard/custom-chart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    datasetId: datasetId,
+                    title: title,
+                    dimensionKey: dimensionKey,
+                    type: type,
+                    aggregation: 'COUNT'
+                })
+            })
+            .then(() => window.location.reload())
+            .catch(err => alert(err.message));
+        }
+
+        // Iniciar todo
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+        });
+        /*]]>*/
+    </script>
+</body>
+</html>

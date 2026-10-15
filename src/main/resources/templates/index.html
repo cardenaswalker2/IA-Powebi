@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/main :: head}"></head>
+<body>
+    <div class="app-layout">
+        <aside th:replace="~{layout/main :: aside}"></aside>
+
+        <main class="center-workspace" style="width: calc(100% - 230px); margin-left: 230px; padding: 24px 32px;">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Plataforma Inteligente de Análisis</h1>
+                    <p class="page-subtitle">NEXA INSIGHTS — Transforma datos dinámicos en dashboards analíticos y consultas inteligentes con Groq AI</p>
+                </div>
+                <div>
+                    <a th:href="@{/import}" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Importar Nuevo Dataset
+                    </a>
+                </div>
+            </div>
+
+            <!-- KPIs Globales -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">
+                        <span>Datasets Activos</span>
+                        <span class="badge">MongoDB</span>
+                    </div>
+                    <div class="kpi-value" th:text="${totalDatasets}">0</div>
+                    <div class="kpi-subtitle">Colecciones analíticas estructuradas</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-title">
+                        <span>Registros Totales</span>
+                        <span class="badge">Indexados</span>
+                    </div>
+                    <div class="kpi-value" th:text="${#numbers.formatInteger(totalRows, 0, 'POINT')}">0</div>
+                    <div class="kpi-subtitle">Con trazabilidad de fila original</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-title">
+                        <span>Motor de IA</span>
+                        <span class="badge">Conectado</span>
+                    </div>
+                    <div class="kpi-value" style="font-size: 20px;">Groq LLaMA 3.3</div>
+                    <div class="kpi-subtitle">Consultas verificables con datos reales</div>
+                </div>
+            </div>
+
+            <!-- Datasets Disponibles -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="font-size: 18px; font-weight: 700; color: var(--text-primary);">Conjuntos de Datos Disponibles</h2>
+                        <p style="font-size: 13px; color: var(--text-secondary);">Selecciona un dataset para ver su dashboard generado o consultar con la IA</p>
+                    </div>
+                </div>
+
+                <div th:if="${datasets.isEmpty()}" style="text-align: center; padding: 48px 20px;">
+                    <div style="width: 50px; height: 50px; border-radius: 50%; background: var(--brand-light); color: var(--brand-dark); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    </div>
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No hay datasets importados todavía</h3>
+                    <p style="font-size: 13px; color: var(--text-secondary); max-width: 440px; margin: 0 auto 20px;">
+                        Carga un archivo Excel (.xlsx, .xls) o CSV con cualquier esquema de columnas (como el ejemplo de Programa de Auditorías) para descubrir sus datos automáticamente.
+                    </p>
+                    <a th:href="@{/import}" class="btn btn-primary">Comenzar importación</a>
+                </div>
+
+                <div th:unless="${datasets.isEmpty()}" class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre del Dataset</th>
+                                <th>Archivo de Origen</th>
+                                <th>Formato</th>
+                                <th>Filas</th>
+                                <th>Columnas</th>
+                                <th>Calidad</th>
+                                <th>Fecha Importación</th>
+                                <th style="text-align: right;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="ds : ${datasets}">
+                                <td>
+                                    <strong th:text="${ds.name}" style="color: var(--brand-dark);"></strong>
+                                    <div th:if="${ds.sheetName != null}" th:text="'Hoja: ' + ${ds.sheetName}" style="font-size: 11px; color: var(--text-secondary);"></div>
+                                </td>
+                                <td th:text="${ds.originalFileName}"></td>
+                                <td><span class="badge" th:text="${ds.fileFormat}"></span></td>
+                                <td th:text="${#numbers.formatInteger(ds.totalRows, 0, 'POINT')}"></td>
+                                <td th:text="${ds.totalColumns}"></td>
+                                <td>
+                                    <span th:text="${#numbers.formatDecimal(ds.overallQualityScore, 1, 1)} + '%'" 
+                                          style="font-weight: 600; color: var(--brand-dark);"></span>
+                                </td>
+                                <td th:text="${#temporals.format(ds.importedAt, 'yyyy-MM-dd HH:mm')}"></td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                    <a th:href="@{'/dashboard/' + ${ds.id}}" class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;">Dashboard</a>
+                                    <a th:href="@{'/explorer?datasetId=' + ${ds.id}}" class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;">Explorar</a>
+                                    <a th:href="@{'/assistant?datasetId=' + ${ds.id}}" class="btn btn-primary" style="padding: 5px 10px; font-size: 12px;">Consultar IA</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
