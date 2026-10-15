@@ -151,6 +151,31 @@ public class GroqAiAssistantService {
         responseDto.setSupportingRows(supportingRows);
         responseDto.setExecutedQuery(botMsg.getExecutedQuery());
 
+        // Detección de intenciones operativas reales (Generación de PDF, Excel, Navegación)
+        String lowerQuery = userQuery.toLowerCase();
+        if (lowerQuery.contains("pdf") || lowerQuery.contains("informe") || lowerQuery.contains("reporte")) {
+            String reportType = "executive";
+            if (lowerQuery.contains("cambio") || lowerQuery.contains("modificaci") || lowerQuery.contains("auditor")) {
+                reportType = "audit";
+            } else if (lowerQuery.contains("técnico") || lowerQuery.contains("tecnico") || lowerQuery.contains("esquema")) {
+                reportType = "technical";
+            }
+            responseDto.setActionType("DOWNLOAD_PDF");
+            responseDto.setActionTitle("📄 Descargar Informe PDF Oficial");
+            responseDto.setDownloadUrl("/reports/export/pdf/" + dataset.getId() + "?type=" + reportType);
+            responseDto.setActionDescription("Informe generado con éxito con datos activos, KPIs y trazabilidad completa.");
+        } else if (lowerQuery.contains("excel") || lowerQuery.contains("xlsx") || lowerQuery.contains("descargar datos")) {
+            responseDto.setActionType("DOWNLOAD_XLSX");
+            responseDto.setActionTitle("📊 Descargar Libro Excel (.XLSX)");
+            responseDto.setDownloadUrl("/reports/export/xlsx/" + dataset.getId());
+            responseDto.setActionDescription("Libro de cálculo actualizado con todas las ediciones y filas conservadas.");
+        } else if (lowerQuery.contains("editar") || lowerQuery.contains("tabla") || lowerQuery.contains("modificar") || lowerQuery.contains("corregir")) {
+            responseDto.setActionType("OPEN_EDITOR");
+            responseDto.setActionTitle("✏️ Abrir Editor de Datos");
+            responseDto.setDownloadUrl("/explorer?datasetId=" + dataset.getId());
+            responseDto.setActionDescription("Acceso al editor tabular con guardado en vivo y registro de versiones.");
+        }
+
         return responseDto;
     }
 

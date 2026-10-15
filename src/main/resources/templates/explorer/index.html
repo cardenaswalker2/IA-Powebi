@@ -95,23 +95,57 @@
             </div>
 
             <!-- Tabla de Registros Paginada -->
+            <!-- Barra de Acciones del Editor -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-primary" onclick="addNewRow()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Agregar Fila
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="openAuditModal()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                        Historial de Cambios / Trazabilidad
+                    </button>
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    💡 Haz doble clic en cualquier celda para editar y presiona Enter para guardar en vivo.
+                </div>
+            </div>
+
+            <!-- Tabla de Registros Paginada con Edición en Vivo -->
             <div class="table-responsive">
-                <table class="data-table">
+                <table class="data-table" id="editorGrid">
                     <thead>
                         <tr>
-                            <th style="background: #EAECE6; color: var(--brand-dark); width: 80px;">Fila Excel</th>
+                            <th style="background: #EAECE6; color: var(--brand-dark); width: 70px;">Fila</th>
                             <th th:each="col : ${selectedDataset.columns}" th:text="${col.originalName}">Columna</th>
+                            <th style="width: 60px; text-align: center;">Acción</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:if="${records.isEmpty()}">
-                            <td th:colspan="${selectedDataset.columns.size() + 1}" style="text-align: center; padding: 32px; color: var(--text-secondary);">
+                            <td th:colspan="${selectedDataset.columns.size() + 2}" style="text-align: center; padding: 32px; color: var(--text-secondary);">
                                 No se encontraron registros coincidentes con el criterio de búsqueda.
                             </td>
                         </tr>
-                        <tr th:each="rec : ${records}">
+                        <tr th:each="rec : ${records}" th:id="'row-' + ${rec.id}">
                             <td style="font-weight: 600; color: var(--brand-dark); background: #FAFBF9;" th:text="'#' + ${rec.rowNumber}"></td>
-                            <td th:each="col : ${selectedDataset.columns}" th:text="${rec.getValue(col.key)}"></td>
+                            <td th:each="col : ${selectedDataset.columns}" 
+                                class="editable-cell"
+                                th:data-record-id="${rec.id}"
+                                th:data-col-key="${col.key}"
+                                th:data-col-name="${col.originalName}"
+                                ondblclick="makeEditable(this)"
+                                th:text="${rec.getValue(col.key)}">
+                            </td>
+                            <td style="text-align: center;">
+                                <button type="button" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #D32F2F;" 
+                                        th:data-record-id="${rec.id}"
+                                        th:data-row-num="${rec.rowNumber}"
+                                        onclick="confirmDeleteRow(this.getAttribute('data-record-id'), this.getAttribute('data-row-num'))">
+                                    ✕
+                                </button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -133,5 +167,182 @@
             </div>
         </main>
     </div>
+
+    <!-- Modal Historial de Auditoría / Trazabilidad -->
+    <div id="auditModal" class="nexa-modal-backdrop">
+        <div class="nexa-modal-content">
+            <div class="nexa-modal-header">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: var(--brand-dark); margin: 0;">Registro Histórico de Auditoría y Trazabilidad</h3>
+                    <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Historial completo de modificaciones sobre este conjunto de datos con opción de reversión.</p>
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="closeAuditModal()">✕</button>
+            </div>
+            <div class="nexa-modal-body" id="auditModalBody">
+                <p>Cargando registros de auditoría...</p>
+            </div>
+            <div class="nexa-modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAuditModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const datasetId = /*[[${selectedDataset.id}]]*/ '';
+
+        function makeEditable(cell) {
+            if (cell.classList.contains('cell-editing')) return;
+
+            const recordId = cell.getAttribute('data-record-id');
+            const colKey = cell.getAttribute('data-col-key');
+            const originalValue = cell.innerText.trim();
+
+            cell.classList.add('cell-editing');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalValue;
+            input.className = 'chat-input';
+            input.style.width = '100%';
+            input.style.padding = '4px 6px';
+            input.style.fontSize = '13px';
+
+            cell.innerHTML = '';
+            cell.appendChild(input);
+            input.focus();
+
+            function save() {
+                const newValue = input.value.trim();
+                cell.classList.remove('cell-editing');
+
+                if (newValue === originalValue) {
+                    cell.innerText = originalValue;
+                    return;
+                }
+
+                cell.innerHTML = '<em>Guardando...</em>';
+
+                fetch('/api/editor/datasets/' + datasetId + '/cell', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        recordId: recordId,
+                        columnKey: colKey,
+                        newValue: newValue,
+                        reason: 'Edición manual de celda'
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        cell.innerText = (data.newValue !== null && data.newValue !== undefined) ? data.newValue : '';
+                        cell.classList.add('cell-modified');
+                    } else {
+                        alert('Error al guardar: ' + (data.error || 'Desconocido'));
+                        cell.innerText = originalValue;
+                    }
+                })
+                .catch(err => {
+                    alert('Error en conexión: ' + err.message);
+                    cell.innerText = originalValue;
+                });
+            }
+
+            input.addEventListener('blur', save);
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    input.blur();
+                } else if (e.key === 'Escape') {
+                    cell.classList.remove('cell-editing');
+                    cell.innerText = originalValue;
+                }
+            });
+        }
+
+        function addNewRow() {
+            fetch('/api/editor/datasets/' + datasetId + '/rows', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error al crear fila: ' + (data.error || 'Desconocido'));
+                }
+            });
+        }
+
+        function confirmDeleteRow(recordId, rowNum) {
+            if (confirm('¿Estás seguro de eliminar la fila #' + rowNum + '? Esta acción quedará registrada en la auditoría.')) {
+                fetch('/api/editor/datasets/' + datasetId + '/records/' + recordId, {
+                    method: 'DELETE'
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const tr = document.getElementById('row-' + recordId);
+                        if (tr) tr.remove();
+                    } else {
+                        alert('Error al eliminar fila: ' + data.error);
+                    }
+                });
+            }
+        }
+
+        function openAuditModal() {
+            const modal = document.getElementById('auditModal');
+            const body = document.getElementById('auditModalBody');
+            modal.style.display = 'flex';
+            body.innerHTML = '<p style="padding: 20px; text-align: center;">Cargando trazabilidad de cambios...</p>';
+
+            fetch('/api/editor/datasets/' + datasetId + '/audits')
+                .then(r => r.json())
+                .then(audits => {
+                    if (!audits || audits.length === 0) {
+                        body.innerHTML = '<p style="padding: 24px; text-align: center; color: var(--text-secondary);">No hay registros de modificaciones aún. Los datos coinciden exactamente con el archivo original.</p>';
+                        return;
+                    }
+
+                    let html = '<table class="data-table"><thead><tr><th>Fecha</th><th>Fila</th><th>Columna</th><th>Operación</th><th>Valor Previo</th><th>Nuevo Valor</th><th>Usuario</th><th>Acción</th></tr></thead><tbody>';
+                    audits.forEach(a => {
+                        html += `<tr>
+                            <td style="font-size: 11px;">${new Date(a.timestamp).toLocaleString()}</td>
+                            <td><strong>#${a.rowNumber}</strong></td>
+                            <td>${a.columnName || a.columnKey}</td>
+                            <td><span class="badge">${a.operation}</span></td>
+                            <td style="color: #C62828;">${a.oldValue !== null ? a.oldValue : '(vacío)'}</td>
+                            <td style="color: #2E7D32; font-weight: 600;">${a.newValue !== null ? a.newValue : '(vacío)'}</td>
+                            <td>${a.modifiedBy || 'Luis Cárdenas'}</td>
+                            <td>
+                                <button type="button" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="rollbackChange('${a.id}')">Revertir</button>
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    body.innerHTML = html;
+                });
+        }
+
+        function rollbackChange(auditId) {
+            if (confirm('¿Deseas revertir este cambio y restaurar el valor anterior?')) {
+                fetch('/api/editor/audits/' + auditId + '/rollback', { method: 'POST' })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            alert(res.message);
+                            window.location.reload();
+                        } else {
+                            alert('Error al revertir: ' + res.error);
+                        }
+                    });
+            }
+        }
+
+        function closeAuditModal() {
+            document.getElementById('auditModal').style.display = 'none';
+        }
+    </script>
 </body>
 </html>

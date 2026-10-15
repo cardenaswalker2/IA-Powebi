@@ -63,14 +63,21 @@
                         <h2 style="font-size: 18px; font-weight: 700; color: var(--brand-dark);" th:text="${selectedDataset.name}">Dataset</h2>
                         <p style="font-size: 13px; color: var(--text-secondary);" th:text="'Origen: ' + ${selectedDataset.originalFileName} + ' (' + ${#numbers.formatInteger(selectedDataset.totalRows, 0, 'POINT')} + ' registros)'"></p>
                     </div>
-                    <div style="display: flex; gap: 12px;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" onclick="openExcelPreview()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            Vista Previa Excel
+                        </button>
                         <a th:href="@{'/reports/export/xlsx/' + ${selectedDataset.id}}" class="btn btn-primary">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             Descargar Excel (.XLSX)
                         </a>
-                        <a th:href="@{'/reports/export/csv/' + ${selectedDataset.id}}" class="btn btn-secondary">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            Descargar CSV UTF-8
+                        <a th:href="@{'/reports/export/pdf/' + ${selectedDataset.id} + '?type=executive'}" class="btn btn-primary" style="background: #245C4F;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Informe PDF Ejecutivo
+                        </a>
+                        <a th:href="@{'/reports/export/pdf/' + ${selectedDataset.id} + '?type=audit'}" class="btn btn-secondary">
+                            PDF de Trazabilidad y Cambios
                         </a>
                     </div>
                 </div>
@@ -102,5 +109,82 @@
             </div>
         </main>
     </div>
+
+    <!-- Modal de Vista Previa de Excel -->
+    <div id="previewModal" class="nexa-modal-backdrop">
+        <div class="nexa-modal-content">
+            <div class="nexa-modal-header">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: var(--brand-dark); margin: 0;">Vista Previa de Exportación Excel (.xlsx)</h3>
+                    <p style="font-size: 12px; color: var(--text-secondary); margin: 2px 0 0;">Inspecciona las hojas, encabezados y formato antes de descargar el libro de trabajo.</p>
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="closeExcelPreview()">✕</button>
+            </div>
+            <div class="nexa-modal-body" id="previewModalBody">
+                <p>Cargando vista previa...</p>
+            </div>
+            <div class="nexa-modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeExcelPreview()">Cerrar</button>
+                <a th:href="@{'/reports/export/xlsx/' + ${selectedDataset.id}}" class="btn btn-primary">
+                    Confirmar y Descargar Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const datasetId = /*[[${selectedDataset.id}]]*/ '';
+
+        function openExcelPreview() {
+            const modal = document.getElementById('previewModal');
+            const body = document.getElementById('previewModalBody');
+            modal.style.display = 'flex';
+            body.innerHTML = '<p style="padding: 24px; text-align: center;">Generando vista previa del libro de cálculo...</p>';
+
+            fetch('/reports/preview/xlsx/' + datasetId)
+                .then(r => r.json())
+                .then(data => {
+                    let html = `
+                        <div style="background: #F4F6F3; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; gap: 24px; font-size: 13px;">
+                            <div><strong>Libro:</strong> ${data.datasetName}.xlsx</div>
+                            <div><strong>Hoja Activa:</strong> ${data.sheetName}</div>
+                            <div><strong>Filas Totales:</strong> ${data.totalRows}</div>
+                            <div><strong>Columnas:</strong> ${data.columns.length}</div>
+                        </div>
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="background: #245C4F; color: #fff;">Fila Origen</th>
+                    `;
+
+                    data.columns.forEach(c => {
+                        html += `<th style="background: #245C4F; color: #fff;">${c.originalName}</th>`;
+                    });
+
+                    html += `</tr></thead><tbody>`;
+
+                    data.sampleRows.forEach(row => {
+                        html += `<tr>`;
+                        html += `<td style="font-weight: 600; background: #FAFBF9;">#${row['Fila Origen']}</td>`;
+                        data.columns.forEach(c => {
+                            const val = row[c.originalName];
+                            html += `<td>${val !== null && val !== undefined ? val : ''}</td>`;
+                        });
+                        html += `</tr>`;
+                    });
+
+                    html += `</tbody></table></div>`;
+                    body.innerHTML = html;
+                })
+                .catch(err => {
+                    body.innerHTML = '<p style="color: red; padding: 20px;">Error al cargar vista previa: ' + err.message + '</p>';
+                });
+        }
+
+        function closeExcelPreview() {
+            document.getElementById('previewModal').style.display = 'none';
+        }
+    </script>
 </body>
 </html>

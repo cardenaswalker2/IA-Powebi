@@ -10,6 +10,12 @@ public class ChatResponseDto {
     private List<Integer> supportingRows;
     private String executedQuery;
 
+    // Acción directa interactiva
+    private String actionType;       // "DOWNLOAD_PDF", "DOWNLOAD_XLSX", "OPEN_EDITOR", "CHART_VIEW"
+    private String actionTitle;      // Título visible de la acción
+    private String downloadUrl;      // URL real y ejecutable
+    private String actionDescription;// Descripción explicativa
+
     public ChatResponseDto() {}
 
     public ChatResponseDto(String response, String sessionId) {
@@ -31,4 +37,16 @@ public class ChatResponseDto {
 
     public String getExecutedQuery() { return executedQuery; }
     public void setExecutedQuery(String executedQuery) { this.executedQuery = executedQuery; }
+
+    public String getActionType() { return actionType; }
+    public void setActionType(String actionType) { this.actionType = actionType; }
+
+    public String getActionTitle() { return actionTitle; }
+    public void setActionTitle(String actionTitle) { this.actionTitle = actionTitle; }
+
+    public String getDownloadUrl() { return downloadUrl; }
+    public void setDownloadUrl(String downloadUrl) { this.downloadUrl = downloadUrl; }
+
+    public String getActionDescription() { return actionDescription; }
+    public void setActionDescription(String actionDescription) { this.actionDescription = actionDescription; }
 }

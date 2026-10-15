@@ -141,4 +141,49 @@ public class ReportExportController {
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(baos.toByteArray());
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.nexainsights.service.PdfReportGenerationService pdfReportService;
+
+    @GetMapping("/export/pdf/{datasetId}")
+    public ResponseEntity<byte[]> exportPdf(
+            @PathVariable String datasetId,
+            @RequestParam(required = false, defaultValue = "executive") String type,
+            @RequestParam(required = false) String scope) throws Exception {
+        Dataset dataset = datasetRepository.findById(datasetId).orElseThrow();
+        byte[] pdfBytes = pdfReportService.generateExecutivePdf(dataset, type, scope);
+
+        String filename = dataset.getName().replaceAll("[^a-zA-Z0-9_.-]", "_") + "_Informe_" + type + ".pdf";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
+    }
+
+    @GetMapping("/preview/xlsx/{datasetId}")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public ResponseEntity<java.util.Map<String, Object>> previewXlsx(@PathVariable String datasetId) {
+        Dataset dataset = datasetRepository.findById(datasetId).orElseThrow();
+        List<DataRecord> records = dataRecordRepository.findByDatasetId(datasetId, PageRequest.of(0, 10)).getContent();
+
+        java.util.Map<String, Object> preview = new java.util.HashMap<>();
+        preview.put("datasetName", dataset.getName());
+        preview.put("sheetName", dataset.getSheetName() != null ? dataset.getSheetName() : "Datos");
+        preview.put("totalRows", dataset.getTotalRows());
+        preview.put("columns", dataset.getColumns());
+
+        java.util.List<java.util.Map<String, Object>> sampleRows = new java.util.ArrayList<>();
+        for (DataRecord rec : records) {
+            java.util.Map<String, Object> r = new java.util.LinkedHashMap<>();
+            r.put("Fila Origen", rec.getRowNumber());
+            for (ColumnDefinition col : dataset.getColumns()) {
+                r.put(col.getOriginalName(), rec.getValue(col.getKey()));
+            }
+            sampleRows.add(r);
+        }
+        preview.put("sampleRows", sampleRows);
+
+        return ResponseEntity.ok(preview);
+    }
 }
