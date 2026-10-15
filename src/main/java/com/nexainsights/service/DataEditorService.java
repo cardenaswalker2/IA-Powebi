@@ -206,7 +206,10 @@ public class DataEditorService {
         if (str.isEmpty()) return null;
 
         if (col != null && col.getEffectiveType() != null && 
-            (col.getEffectiveType().name().contains("NUMERIC") || col.getEffectiveType().name().contains("INTEGER") || col.getEffectiveType().name().contains("DECIMAL"))) {
+            (col.getEffectiveType() == com.nexainsights.model.DataType.NUMBER || 
+             col.getEffectiveType().name().contains("NUM") || 
+             col.getEffectiveType().name().contains("INT") || 
+             col.getEffectiveType().name().contains("DEC"))) {
             try {
                 String cleanNum = str.replace("$", "").replace("€", "").replace(" ", "").replace(",", ".");
                 if (cleanNum.contains(".")) {
@@ -216,6 +219,22 @@ public class DataEditorService {
                 }
             } catch (Exception ignored) {}
         }
+
+        // Prevención de inyección de fórmulas maliciosas en CSV/Excel (=cmd, +cmd, -cmd, @cmd)
+        if (str.startsWith("=") || str.startsWith("+") || str.startsWith("-") || str.startsWith("@")) {
+            // Si no es un número legítimo negativo
+            boolean isSignedNumber = false;
+            try {
+                Double.parseDouble(str);
+                isSignedNumber = true;
+            } catch (Exception ignored) {}
+
+            if (!isSignedNumber && (str.startsWith("=") || str.startsWith("@") || str.startsWith("+") || str.startsWith("-"))) {
+                // Escapar agregando comilla simple para neutralizar ejecución de comandos en hojas de cálculo
+                return "'" + str;
+            }
+        }
+
         return str;
     }
 

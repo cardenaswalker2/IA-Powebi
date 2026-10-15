@@ -174,6 +174,16 @@ public class GroqAiAssistantService {
             responseDto.setActionTitle("✏️ Abrir Editor de Datos");
             responseDto.setDownloadUrl("/explorer?datasetId=" + dataset.getId());
             responseDto.setActionDescription("Acceso al editor tabular con guardado en vivo y registro de versiones.");
+        } else if (lowerQuery.contains("gráfico") || lowerQuery.contains("grafico") || lowerQuery.contains("dashboard") || lowerQuery.contains("visualizar")) {
+            responseDto.setActionType("CHART_VIEW");
+            responseDto.setActionTitle("📈 Ver Gráficos y Dashboard Interactivo");
+            responseDto.setDownloadUrl("/dashboard/" + dataset.getId());
+            responseDto.setActionDescription("Visualizaciones dinámicas interactivas adaptadas al esquema de este archivo.");
+        } else if (lowerQuery.contains("comparar") || lowerQuery.contains("relacion") || lowerQuery.contains("diferencia")) {
+            responseDto.setActionType("RELATIONSHIPS");
+            responseDto.setActionTitle("🔗 Descubrimiento de Relaciones y Comparación");
+            responseDto.setDownloadUrl("/relationships");
+            responseDto.setActionDescription("Explora coincidencias de claves y correlaciones entre conjuntos de datos.");
         }
 
         return responseDto;

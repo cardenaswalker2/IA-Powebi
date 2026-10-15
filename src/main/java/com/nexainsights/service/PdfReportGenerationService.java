@@ -30,7 +30,10 @@ public class PdfReportGenerationService {
 
     public byte[] generateExecutivePdf(Dataset dataset, String reportType, String specificScope) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4, 36, 36, 54, 36);
+        
+        // Si el reporte es de auditoría o técnico detallado, usar orientación horizontal (Landscape) para máxima legibilidad
+        Rectangle pageSize = "audit".equalsIgnoreCase(reportType) ? PageSize.A4.rotate() : PageSize.A4;
+        Document document = new Document(pageSize, 36, 36, 54, 36);
         PdfWriter writer = PdfWriter.getInstance(document, baos);
 
         // Header / Footer de página
@@ -40,11 +43,11 @@ public class PdfReportGenerationService {
         document.open();
 
         // Fuentes de marca NEXA
-        Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 22, new Color(36, 92, 79));
-        Font subtitleFont = FontFactory.getFont(FontFactory.HELVETICA, 12, new Color(90, 100, 95));
-        Font sectionHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, new Color(32, 43, 42));
-        Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.BLACK);
-        Font regularFont = FontFactory.getFont(FontFactory.HELVETICA, 10, new Color(40, 40, 40));
+        Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20, new Color(36, 92, 79));
+        Font subtitleFont = FontFactory.getFont(FontFactory.HELVETICA, 11, new Color(90, 100, 95));
+        Font sectionHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, new Color(32, 43, 42));
+        Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.BLACK);
+        Font regularFont = FontFactory.getFont(FontFactory.HELVETICA, 9, new Color(40, 40, 40));
         Font tableHeaderFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE);
         Font tableCellFont = FontFactory.getFont(FontFactory.HELVETICA, 8, Color.BLACK);
         Font smallMutedFont = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, new Color(120, 120, 120));
@@ -56,11 +59,11 @@ public class PdfReportGenerationService {
 
         PdfPCell titleCell = new PdfPCell();
         titleCell.setBorder(Rectangle.NO_BORDER);
-        titleCell.addElement(new Paragraph("NEXA INSIGHTS", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, new Color(36, 92, 79))));
+        titleCell.addElement(new Paragraph("NEXA INSIGHTS — SISTEMA OFICIAL DE ANALÍTICA", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, new Color(36, 92, 79))));
         
         String reportTitle = "Informe Ejecutivo de Inteligencia de Datos";
         if ("audit".equalsIgnoreCase(reportType)) {
-            reportTitle = "Informe de Auditoría y Trazabilidad de Cambios";
+            reportTitle = "Informe Oficial de Auditoría y Trazabilidad de Cambios";
         } else if ("technical".equalsIgnoreCase(reportType)) {
             reportTitle = "Informe Técnico de Calidad de Datos y Esquema";
         } else if (specificScope != null && !specificScope.trim().isEmpty()) {
@@ -68,11 +71,11 @@ public class PdfReportGenerationService {
         }
 
         Paragraph pTitle = new Paragraph(reportTitle, titleFont);
-        pTitle.setSpacingBefore(4);
+        pTitle.setSpacingBefore(3);
         titleCell.addElement(pTitle);
 
         Paragraph pSub = new Paragraph("Archivo analizado: " + dataset.getName() + " (" + dataset.getOriginalFileName() + ")", subtitleFont);
-        pSub.setSpacingBefore(4);
+        pSub.setSpacingBefore(3);
         titleCell.addElement(pSub);
 
         headerTable.addCell(titleCell);
@@ -198,7 +201,8 @@ public class PdfReportGenerationService {
             addAuditHeaderCell(auditTable, "Valor Previo -> Nuevo");
             addAuditHeaderCell(auditTable, "Fecha / Usuario");
 
-            int auditLimit = Math.min(audits.size(), 10);
+            boolean isAuditReport = "audit".equalsIgnoreCase(reportType);
+            int auditLimit = isAuditReport ? Math.min(audits.size(), 100) : Math.min(audits.size(), 10);
             for (int i = 0; i < auditLimit; i++) {
                 DataRecordAudit a = audits.get(i);
                 auditTable.addCell(new Phrase("#" + a.getRowNumber(), tableCellFont));
@@ -209,7 +213,7 @@ public class PdfReportGenerationService {
                               (a.getNewValue() != null ? a.getNewValue().toString() : "(vacío)");
                 auditTable.addCell(new Phrase(diff, tableCellFont));
 
-                String userTime = a.getTimestamp().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) + " (" + a.getModifiedBy() + ")";
+                String userTime = a.getTimestamp().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) + " (" + (a.getModifiedBy() != null ? a.getModifiedBy() : "Luis Cárdenas") + ")";
                 auditTable.addCell(new Phrase(userTime, tableCellFont));
             }
             document.add(auditTable);
