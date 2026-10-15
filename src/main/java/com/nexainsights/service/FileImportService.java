@@ -248,6 +248,7 @@ public class FileImportService {
                 dataset.setSheetName(sheet.getSheetName());
 
                 DataFormatter formatter = new DataFormatter();
+                FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
                 Row headerRow = sheet.getRow(headerIdx);
                 if (headerRow == null) throw new IllegalStateException("Fila de encabezado inválida.");
 
@@ -255,8 +256,19 @@ public class FileImportService {
                 Set<String> seenHeaders = new HashSet<>();
                 for (int c = 0; c < lastCol; c++) {
                     Cell cell = headerRow.getCell(c);
-                    String origName = cell != null ? formatter.formatCellValue(cell).trim() : "";
-                    if (origName.isEmpty()) origName = "Columna_" + (c + 1);
+                    String origName = "";
+                    if (cell != null) {
+                        try {
+                            origName = formatter.formatCellValue(cell, evaluator).trim();
+                        } catch (Exception e) {
+                            origName = formatter.formatCellValue(cell).trim();
+                        }
+                    }
+                    // Limpieza de fórmulas y encabezados basura como SUM(...) o números solos
+                    if (origName.startsWith("=") || origName.toUpperCase().startsWith("SUM(") || origName.toUpperCase().startsWith("PROM(") || origName.toUpperCase().startsWith("COUNT(")) {
+                        origName = "";
+                    }
+                    if (origName.isEmpty()) origName = "Campo_" + (c + 1);
 
                     // Si hay nombres repetidos en el archivo, sufijar con número único
                     String uniqueHeader = origName;
@@ -285,15 +297,53 @@ public class FileImportService {
                         Cell cell = row.getCell(c);
                         String rawVal = "";
                         if (cell != null) {
-                            if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
-                                rawVal = new SimpleDateFormat("yyyy-MM-dd").format(cell.getDateCellValue());
-                            } else {
+                            try {
+                                if (cell.getCellType() == CellType.FORMULA) {
+                                    CellValue cellValue = evaluator.evaluate(cell);
+                                    if (cellValue != null) {
+                                        switch (cellValue.getCellType()) {
+                                            case BOOLEAN:
+                                                rawVal = String.valueOf(cellValue.getBooleanValue());
+                                                break;
+                                            case NUMERIC:
+                                                if (DateUtil.isCellDateFormatted(cell)) {
+                                                    Date d = DateUtil.getJavaDate(cellValue.getNumberValue());
+                                                    rawVal = sanitizeDateValue(d);
+                                                } else {
+                                                    double num = cellValue.getNumberValue();
+                                                    rawVal = (num == (long) num) ? String.format("%d", (long) num) : String.valueOf(num);
+                                                }
+                                                break;
+                                            case STRING:
+                                                rawVal = cellValue.getStringValue();
+                                                break;
+                                            default:
+                                                rawVal = "";
+                                        }
+                                    }
+                                } else if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+                                    Date d = cell.getDateCellValue();
+                                    rawVal = sanitizeDateValue(d);
+                                } else {
+                                    rawVal = formatter.formatCellValue(cell, evaluator);
+                                }
+                            } catch (Exception ex) {
                                 rawVal = formatter.formatCellValue(cell);
                             }
                         }
 
-                        if (!rawVal.trim().isEmpty()) rowHasData = true;
-                        data.put(columns.get(c).getKey(), rawVal.trim());
+                        // Limpieza de valores nulos o fórmulas no resueltas de Excel (#N/A, #VALUE!, #REF!)
+                        if (rawVal != null) {
+                            rawVal = rawVal.trim();
+                            if (rawVal.startsWith("#") || rawVal.equalsIgnoreCase("1899-12-31") || rawVal.equalsIgnoreCase("1900-01-00") || rawVal.equalsIgnoreCase("00/00/0000")) {
+                                rawVal = "";
+                            }
+                        } else {
+                            rawVal = "";
+                        }
+
+                        if (!rawVal.isEmpty()) rowHasData = true;
+                        data.put(columns.get(c).getKey(), rawVal);
                     }
 
                     if (rowHasData) {
@@ -386,5 +436,16 @@ public class FileImportService {
         dashboardService.generateDefaultDashboard(dataset);
 
         return dataset;
+    }
+
+    private String sanitizeDateValue(Date date) {
+        if (date == null) return "";
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        int year = cal.get(Calendar.YEAR);
+        if (year < 1920 || year > 2100) {
+            return ""; // Evita fechas anómalas de Excel como 1899-12-31 o 1900-01-00
+        }
+        return new SimpleDateFormat("yyyy-MM-dd").format(date);
     }
 }
