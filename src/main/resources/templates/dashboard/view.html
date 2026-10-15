@@ -11,6 +11,8 @@
     <link rel="stylesheet" th:href="@{/css/main.css}">
     <!-- Apache ECharts -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <!-- Marked.js para interpretar Markdown (negritas **, enlaces y listas limpiamente) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 </head>
 <body>
     <div class="app-layout">
@@ -901,14 +903,44 @@
                     evidenceHtml = `<div style="font-size:10px; color:#176B5B; margin-top:8px; font-weight:600;">✔ Filas de evidencia original: #${data.supportingRows.join(', #')}</div>`;
                 }
 
+                // Parsear Markdown (negritas **, listas, títulos y enlaces limpios)
+                let parsedText = data.response;
+                if (typeof marked !== 'undefined') {
+                    parsedText = marked.parse(data.response);
+                } else {
+                    parsedText = data.response
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>');
+                }
+
+                // Tarjeta de acción interactiva si se generó un documento o acción
+                let actionCardHtml = '';
+                if (data.actionType && data.downloadUrl) {
+                    actionCardHtml = `
+                        <div class="chat-action-card" style="margin-top: 10px;">
+                            <h5 style="margin: 0 0 4px 0; font-size: 12px; font-weight: 700; color: #245C4F;">
+                                ${data.actionTitle || 'Acción Disponible'}
+                            </h5>
+                            <p style="margin: 0 0 8px 0; font-size: 11px; color: #555E5C;">
+                                ${data.actionDescription || 'Documento oficial generado con éxito.'}
+                            </p>
+                            <a href="${data.downloadUrl}" target="_blank" class="chat-action-btn" style="padding: 4px 10px; font-size: 11px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                Descargar Archivo Oficial
+                            </a>
+                        </div>
+                    `;
+                }
+
                 botBubble.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
                         <span style="font-weight: 700; color: var(--brand-dark);">NEXA Insights</span>
                         <span style="font-size: 10px; color: var(--text-secondary);">Recién</span>
                     </div>
-                    <div>${data.response.replace(/\n/g, '<br>')}</div>
+                    <div class="ai-markdown-body" style="line-height: 1.45;">${parsedText}</div>
+                    ${actionCardHtml}
                     ${evidenceHtml}
-                    <div class="ai-action-btn-list">
+                    <div class="ai-action-btn-list" style="margin-top: 10px;">
                         <a href="/explorer?datasetId=${datasetId}" class="ai-chip-btn">📋 Ver registros en la tabla</a>
                         <button type="button" class="ai-chip-btn" onclick="openNewChartModal()">📈 Crear gráfico</button>
                     </div>

@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/main.css}">
+    <!-- Marked.js para interpretar Markdown (negritas **, enlaces, listas y tablas limpiamente) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 </head>
 <body>
     <div class="app-layout">
@@ -184,7 +186,13 @@
             bubble.className = 'message-bubble ' + role;
 
             const textNode = document.createElement('div');
-            textNode.innerHTML = content.replace(/\n/g, '<br>');
+            if (typeof marked !== 'undefined') {
+                textNode.innerHTML = marked.parse(content);
+            } else {
+                textNode.innerHTML = content
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>');
+            }
             bubble.appendChild(textNode);
 
             if (rows && rows.length > 0) {
